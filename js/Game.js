@@ -131,6 +131,16 @@ class Game {
   // ─── Update ───
 
   _update(dt) {
+    // Mute toggle — tap top-right corner area in any state
+    if (this.input && this.input.justTapped) {
+      const p = this.input.getPos();
+      if (p.x > CONFIG.WIDTH - 30 && p.y < 25) {
+        this.audio.toggleMute();
+        this.input.justTapped = false;
+        return;
+      }
+    }
+
     switch (this.state) {
       case 'menu':
         this.starField.update(dt);
@@ -390,7 +400,11 @@ class Game {
           this.meta.earnCores(1);
           this.stats.cores++;
           this.audio.coreCollect();
-          this.screenShake = Math.max(this.screenShake, 2);
+          this.screenShake = Math.max(this.screenShake, 3);
+          this.screenFlash = Math.max(this.screenFlash, 0.15);
+          this.particles.emit(s.x, s.y, 15, {
+            speed: 160, color: '#ff88ff', size: 4, life: 0.6
+          });
           this.popup.add('◆+1', s.x, s.y, '#ff88ff');
         } else {
           this.stats.scrap++;
@@ -414,8 +428,9 @@ class Game {
       this._applyPlasmaChain(e.x, e.y);
     }
 
-    // Particle burst
-    this.particles.explosion(e.x, e.y);
+    // Particle burst (scaled by enemy size)
+    const scale = Math.min(e.radius / 10, 2);
+    this.particles.explosion(e.x, e.y, scale);
 
     // Drop scrap
     const scrapCount = e.isBoss ? 15 : (e.type === 'tank' ? 4 : 2);
@@ -461,7 +476,7 @@ class Game {
     this.announcements.push({ text: 'LEVEL UP!', timer: 2, y: CONFIG.HEIGHT * 0.3 });
 
     // Show upgrade selection
-    this.upgradeUI.show();
+    this.upgradeUI.show(this.stats.upgrades);
     this.state = 'upgrade';
     this.timeScale = 0.3;
   }
@@ -530,6 +545,9 @@ class Game {
     this.enemiesThisWave = CONFIG.ENEMIES_PER_WAVE + Math.floor(this.wave * 1.5);
     this.spawnInterval = Math.max(0.25, 0.8 - this.wave * 0.03);
 
+    // Wave announcement
+    this.announcements.push({ text: `✦ WAVE ${this.wave} ✦`, timer: 2, y: CONFIG.HEIGHT * 0.25 });
+
     // Boss wave check
     if (this.wave === CONFIG.BOSS_WAVE) {
       this.enemiesThisWave = Math.floor(this.enemiesThisWave * 1.5);
@@ -556,6 +574,17 @@ class Game {
       } else {
         this.metaScreen.render(ctx, this.meta);
       }
+      // Mute toggle on menu/meta
+      ctx.save();
+      ctx.textAlign = 'right';
+      ctx.font = '14px monospace';
+      const isMuted = this.audio && this.audio.isMuted();
+      ctx.fillStyle = isMuted ? 'rgba(85,85,119,0.7)' : 'rgba(170,170,204,0.7)';
+      ctx.shadowColor = isMuted ? 'transparent' : '#4a9eff';
+      ctx.shadowBlur = isMuted ? 0 : 6;
+      ctx.fillText(isMuted ? '🔇' : '🔊', CONFIG.WIDTH - 6, 18);
+      ctx.shadowBlur = 0;
+      ctx.restore();
       ctx.restore();
       return;
     }
@@ -653,6 +682,18 @@ class Game {
     if (this.chromaticIntensity > 0.5) {
       this._applyChromatic(ctx, shakeX, shakeY);
     }
+
+    // Mute toggle — always visible in top-right corner
+    ctx.save();
+    ctx.textAlign = 'right';
+    ctx.font = '14px monospace';
+    const isMuted = this.audio && this.audio.isMuted();
+    ctx.fillStyle = isMuted ? 'rgba(85,85,119,0.7)' : 'rgba(170,170,204,0.7)';
+    ctx.shadowColor = isMuted ? 'transparent' : '#4a9eff';
+    ctx.shadowBlur = isMuted ? 0 : 6;
+    ctx.fillText(isMuted ? '🔇' : '🔊', CONFIG.WIDTH - 6, 18);
+    ctx.shadowBlur = 0;
+    ctx.restore();
   }
 
   _renderGameOver(ctx) {
@@ -667,13 +708,21 @@ class Game {
     ctx.fillText('GAME OVER', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.17);
     ctx.shadowBlur = 0;
 
+    // Wave reached badge
+    ctx.shadowColor = '#ffddaa';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = '#ffddaa';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText(`✦ Reached Wave ${this.wave} ✦`, CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.215);
+    ctx.shadowBlur = 0;
+
     // Score line
     ctx.fillStyle = '#ffddaa';
     ctx.font = 'bold 14px monospace';
-    ctx.fillText(`Score: ${this.score}`, CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.24);
+    ctx.fillText(`Score: ${this.score}`, CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.255);
     ctx.fillStyle = '#888899';
     ctx.font = '9px monospace';
-    ctx.fillText(`Wave ${this.wave}  •  Level ${this.level}`, CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.285);
+    ctx.fillText(`Level ${this.level}`, CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.29);
 
     // Divider line
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';

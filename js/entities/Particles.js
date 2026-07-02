@@ -29,10 +29,10 @@ class ParticleSystem {
     }
   }
 
-  explosion(x, y) {
-    this.emit(x, y, 20, { speed: 200, color: '#ff8844', size: 4, life: 0.6 });
-    this.emit(x, y, 10, { speed: 150, color: '#ffcc44', size: 2.5, life: 0.4 });
-    this.emit(x, y, 5, { speed: 100, color: '#ffffff', size: 2, life: 0.3 });
+  explosion(x, y, scale = 1) {
+    this.emit(x, y, Math.floor(20 * scale), { speed: 200 * scale, color: '#ff8844', size: 4 * scale, life: 0.6 * scale });
+    this.emit(x, y, Math.floor(10 * scale), { speed: 150 * scale, color: '#ffcc44', size: 2.5 * scale, life: 0.4 * scale });
+    this.emit(x, y, Math.floor(5 * scale), { speed: 100 * scale, color: '#ffffff', size: 2 * scale, life: 0.3 * scale });
   }
 
   bossExplosion(x, y) {

@@ -106,6 +106,7 @@ class BGM {
     this._running = false;
     this._bpm = 120;
     this._seq = null;
+    this._lastVol = 0.09;
   }
 
   _gain(vol, ramp = 0.05) {
@@ -166,6 +167,7 @@ class BGM {
     this.master.connect(this.ctx.destination);
 
     this._running = true;
+    this._lastVol = cfg.vol;
     const ms = 60000 / this._bpm / 4; // 16th-note tick
     this._timer = setInterval(() => this._tick(), ms);
   }
@@ -224,8 +226,27 @@ class AudioManager {
   constructor() {
     this.ctx = null;
     this.masterVolume = 0.25;
+    this._savedVolume = 0.25;
+    this._muted = false;
     this.bgm = null;
     this._bgmState = null;
+  }
+
+  isMuted() { return this._muted; }
+
+  toggleMute() {
+    this._muted = !this._muted;
+    if (this._muted) {
+      this._savedVolume = this.masterVolume;
+      this.masterVolume = 0;
+      if (this.bgm && this.bgm.master) this.bgm.master.gain.setValueAtTime(0, this.ctx.currentTime);
+    } else {
+      this.masterVolume = this._savedVolume;
+      if (this.bgm && this.bgm.master && this.ctx) {
+        const target = this.bgm._lastVol !== undefined ? this.bgm._lastVol : 0.09;
+        this.bgm.master.gain.linearRampToValueAtTime(target, this.ctx.currentTime + 0.05);
+      }
+    }
   }
 
   resume() {

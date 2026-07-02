@@ -26,6 +26,20 @@ class HUD {
       ctx.fillText(`⛡${player.shield}`, 6 + player.maxHp * 14 + 4, 20);
     }
 
+    // ── Shield visual bar (segmented) ──
+    if (player.maxShield > 0) {
+      for (let i = 0; i < player.maxShield; i++) {
+        const sx = 6 + i * 8;
+        const sy = 24;
+        const hasShield = i < player.shield;
+        ctx.shadowColor = hasShield ? '#66ccff' : 'transparent';
+        ctx.shadowBlur = hasShield ? 3 : 0;
+        ctx.fillStyle = hasShield ? '#66ccff' : '#1a3344';
+        ctx.fillRect(sx, sy, 6, 4);
+      }
+      ctx.shadowBlur = 0;
+    }
+
     // ── Wave badge ──
     ctx.textAlign = 'right';
     ctx.fillStyle = '#ffddaa';

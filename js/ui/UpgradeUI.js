@@ -6,11 +6,11 @@ class UpgradeUI {
     this.selectedIndex = -1;
   }
 
-  show(pool) {
+  show(ownedUpgrades = []) {
     this.active = true;
     this.selectedIndex = -1;
     this.options = [];
-
+    this.ownedSet = new Set(ownedUpgrades.map(n => n.toLowerCase()));
     const allUpgrades = [
       { name: 'Plasma Chain', desc: 'Chain shots hit nearby enemies', color: '#44ff88', icon: '⚡' },
       { name: 'Gravity Well', desc: 'Pull scrap & enemies closer', color: '#8844ff', icon: '◉' },
@@ -112,6 +112,18 @@ class UpgradeUI {
       ctx.fillStyle = '#777788';
       ctx.font = '7px monospace';
       ctx.fillText(opt.desc, cx + cardW / 2, cardY + 72);
+
+      // Ownership badge
+      const isOwned = this.ownedSet && this.ownedSet.has(opt.name.toLowerCase());
+      if (isOwned) {
+        ctx.fillStyle = 'rgba(68, 255, 136, 0.15)';
+        ctx.beginPath();
+        ctx.roundRect(cx + cardW * 0.12, cardY + 80, cardW * 0.76, 14, 4);
+        ctx.fill();
+        ctx.fillStyle = '#44ff88';
+        ctx.font = 'bold 7px monospace';
+        ctx.fillText('✓ OWNED', cx + cardW / 2, cardY + 90);
+      }
 
       // Bottom highlight on hover
       if (hovered) {
