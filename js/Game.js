@@ -35,6 +35,7 @@ class Game {
     this.waveComplete = false;
     this.transitionTimer = 0;
     this.coreDropBonus = 0;
+    this.spawnInterval = CONFIG.SPAWN_INTERVAL;
 
     // Run stats
     this.stats = {
@@ -59,6 +60,11 @@ class Game {
     this.hitPause = 0;
     this.hitPauseRemaining = 0;
     this.timeScale = 1;
+    this._plasmaChainActive = false;
+    this._gravityWellActive = false;
+    this._solarFlareActive = false;
+    this._solarFlareTimer = 0;
+    this._magnetBonus = 0;
 
     // Score
     this.score = 0;
@@ -147,9 +153,15 @@ class Game {
         this._updateEnemiesAndBullets(dt * 0.1);
         const chosen = this.upgradeUI.handleTap(this.input);
         if (chosen) {
-          this._applyUpgrade(chosen);
-          this.state = 'playing';
-          this.timeScale = 1;
+          if (chosen === 'DISMISS') {
+            // Tap outside — resume without picking
+            this.state = 'playing';
+            this.timeScale = 1;
+          } else {
+            this._applyUpgrade(chosen);
+            this.state = 'playing';
+            this.timeScale = 1;
+          }
         }
         break;
 
@@ -164,8 +176,14 @@ class Game {
 
         // Stare at death screen — wait for tap
         if (this.input.justTapped) {
-          this.state = 'menu';
-          this._resetJuice();
+          const p = this.input.getPos();
+          // Check if tap is in UPGRADES button area (bottom of screen)
+          if (p.y > CONFIG.HEIGHT * 0.84) {
+            this.showMeta();
+          } else {
+            this.state = 'menu';
+            this._resetJuice();
+          }
         }
         break;
 
@@ -199,11 +217,23 @@ class Game {
     this.player.update(dt, this.input, this.bullets);
     this._updateEnemiesAndBullets(dt);
 
+    // Solar Flare — periodic pulse clears enemy bullets
+    if (this._solarFlareActive) {
+      this._solarFlareTimer += dt;
+      if (this._solarFlareTimer >= CONFIG.SOLAR_FLARE_INTERVAL) {
+        this._solarFlareTimer = 0;
+        this._triggerSolarFlare();
+      }
+    }
+
     // Wave management
     this._updateWaves(dt);
 
     // Collision
     this._checkCollisions();
+
+    // Gravity Well — active pull every frame
+    this._applyGravityWell(dt);
 
     // Scrap
     this.scrapManager.update(dt, this.player, this.meta, this);
@@ -257,7 +287,7 @@ class Game {
     // Spawn timer
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && this.enemiesSpawnedThisWave < this.enemiesThisWave) {
-      this.spawnTimer = CONFIG.SPAWN_INTERVAL;
+      this.spawnTimer = this.spawnInterval;
       this._spawnEnemy();
       this.enemiesSpawnedThisWave++;
     }
@@ -379,6 +409,11 @@ class Game {
     this.audio.explosion();
     this.screenShake = Math.max(this.screenShake, e.radius * 0.3);
 
+    // Plasma Chain — chain damage to nearby enemies
+    if (this._plasmaChainActive) {
+      this._applyPlasmaChain(e.x, e.y);
+    }
+
     // Particle burst
     this.particles.explosion(e.x, e.y);
 
@@ -387,8 +422,13 @@ class Game {
     this.scrapManager.spawn(e.x, e.y, scrapCount);
     // Note: stats.scrap is incremented only on collection in _checkScrapCollection
 
-    // Drop cores (chance)
-    if (Math.random() < CONFIG.CORE_CHANCE + this.coreDropBonus) {
+    // Drop cores (wave-scaled chance)
+    const coreChance = CONFIG.CORE_CHANCE + this.coreDropBonus + this.wave * 0.02;
+    if (Math.random() < coreChance) {
+      this.scrapManager.spawn(e.x, e.y, 1, true);
+    }
+    // Guarantee core from tank
+    if (e.type === 'tank' && Math.random() < 0.3) {
       this.scrapManager.spawn(e.x, e.y, 1, true);
     }
   }
@@ -431,7 +471,7 @@ class Game {
 
     switch (choice.name) {
       case 'Plasma Chain':
-        // Already built-in logic handled elsewhere for demonstration
+        this._plasmaChainActive = true;
         break;
       case 'Gravity Well':
         this._gravityWellActive = true;
@@ -455,8 +495,7 @@ class Game {
         this.player.moveSpeed *= 1.2;
         break;
       case 'Magnet Up':
-        // Increase collection radius via run modifier
-        this.scrapManager._magnetBonus = (this.scrapManager._magnetBonus || 1) * 1.4;
+        this._magnetBonus = (this._magnetBonus || 1) * 1.4;
         break;
     }
   }
@@ -489,7 +528,7 @@ class Game {
 
     // Wave scaling
     this.enemiesThisWave = CONFIG.ENEMIES_PER_WAVE + Math.floor(this.wave * 1.5);
-    CONFIG.SPAWN_INTERVAL = Math.max(0.25, 0.8 - this.wave * 0.03);
+    this.spawnInterval = Math.max(0.25, 0.8 - this.wave * 0.03);
 
     // Boss wave check
     if (this.wave === CONFIG.BOSS_WAVE) {
@@ -679,13 +718,21 @@ class Game {
       ctx.fillText(this.stats.upgrades.join(' • '), CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.62);
     }
 
-    // Restart indicator
+    // Restart / Upgrades indicator
     const blink = Math.sin(performance.now() * 0.003);
     ctx.fillStyle = blink > 0 ? '#ffffff' : '#555577';
     ctx.font = '10px monospace';
     ctx.shadowColor = '#4a9eff';
     ctx.shadowBlur = blink > 0 ? 6 : 0;
     ctx.fillText('TAP TO CONTINUE', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.80);
+    ctx.shadowBlur = 0;
+
+    // Meta access button
+    ctx.fillStyle = '#ff88ff';
+    ctx.font = '8px monospace';
+    ctx.shadowColor = '#ff44ff';
+    ctx.shadowBlur = 4;
+    ctx.fillText('◈ UPGRADES ◈', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.88);
     ctx.shadowBlur = 0;
     ctx.textAlign = 'left';
   }
@@ -730,8 +777,12 @@ class Game {
     this.xpToNext = 20;
     this.level = 0;
     this.coreDropBonus = 0;
+    this.timeScale = 1;
+    this._plasmaChainActive = false;
     this._gravityWellActive = false;
     this._solarFlareActive = false;
+    this._solarFlareTimer = 0;
+    this._magnetBonus = 0;
 
     this.stats = {
       enemiesKilled: 0,
@@ -771,6 +822,80 @@ class Game {
     this.chromaticIntensity = 0;
     this.screenFlash = 0;
     this.damageFlash = 0;
+  }
+
+  _triggerSolarFlare() {
+    // Clear all enemy bullets within range of player
+    let cleared = 0;
+    this.bullets.enemyBullets.updateAll(0, (b) => {
+      const d = dist(b, this.player);
+      if (d < CONFIG.SOLAR_FLARE_RANGE) {
+        this.bullets.enemyBullets.release(b);
+        cleared++;
+      }
+    });
+    this.screenShake = Math.max(this.screenShake, 3);
+    this.screenFlash = 0.15;
+    this.announcements.push({ text: '☀ FLARE!', timer: 0.8, y: CONFIG.HEIGHT * 0.3 });
+    // Sparkle particles
+    this.particles.emit(this.player.x, this.player.y, 20, {
+      speed: 150, color: '#ffaa44', size: 3, life: 0.5
+    });
+  }
+
+  _applyPlasmaChain(x, y) {
+    // Chain lightning to nearby enemies
+    let targets = [];
+    for (const e of this.enemies.pool.active) {
+      if (!e.alive) continue;
+      const d = dist({x, y}, e);
+      if (d < CONFIG.PLASMA_CHAIN_RANGE) {
+        targets.push({ enemy: e, distance: d });
+      }
+    }
+    // Sort by distance, hit up to max targets
+    targets.sort((a, b) => a.distance - b.distance);
+    const hitCount = Math.min(targets.length, CONFIG.PLASMA_CHAIN_MAX_TARGETS);
+    for (let i = 0; i < hitCount; i++) {
+      const e = targets[i].enemy;
+      const killed = this.enemies.damageEnemy(e, 1, this);
+      this.particles.emit(e.x, e.y, 6, {
+        speed: 100, color: '#44ff88', size: 3, life: 0.3
+      });
+      if (killed) {
+        this._onEnemyKilled(e);
+      } else {
+        this.audio.hit();
+      }
+    }
+  }
+
+  _applyGravityWell(dt) {
+    if (!this._gravityWellActive || !this.player.alive) return;
+
+    const px = this.player.x;
+    const py = this.player.y;
+
+    // Pull enemies toward player
+    for (const e of this.enemies.pool.active) {
+      if (!e.alive || e.isBoss) continue;
+      const d = dist(e, this.player);
+      if (d > 2 && d < CONFIG.GRAVITY_WELL_RANGE) {
+        const force = CONFIG.GRAVITY_WELL_ENEMY_PULL / Math.max(d, 10);
+        e.x += (px - e.x) / d * force * dt;
+        e.y += (py - e.y) / d * force * dt;
+      }
+    }
+
+    // Pull scrap toward player (stronger)
+    this.scrapManager.pool.updateAll(0, (s) => {
+      const d = dist(s, this.player);
+      if (d > 2 && d < CONFIG.GRAVITY_WELL_RANGE * 1.2) {
+        const force = CONFIG.GRAVITY_WELL_SCRAP_PULL / Math.max(d, 10);
+        s.x += (px - s.x) / d * force * dt;
+        s.y += (py - s.y) / d * force * dt;
+      }
+    });
   }
 
   // Menu screen actions

@@ -25,7 +25,12 @@ class ScrapManager {
 
   update(dt, player, meta, game) {
     const mods = meta ? meta.getAppliedModifiers() : {};
-    const magnetRadius = CONFIG.SCRAP_COLLECT_RADIUS * (mods.magnetMult || 1);
+    let magnetMult = mods.magnetMult || 1;
+    // Apply in-run Magnet Up bonus
+    if (game && game._magnetBonus) {
+      magnetMult *= game._magnetBonus;
+    }
+    const magnetRadius = CONFIG.SCRAP_COLLECT_RADIUS * magnetMult;
     const hasScrapMagnet = mods.scrapMagnet || false;
     const hasCoreMagnet = mods.coreMagnet || false;
 

@@ -150,6 +150,9 @@ class UpgradeUI {
         return this.options[i];
       }
     }
-    return null;
+
+    // Tap outside cards → dismiss the upgrade screen
+    this.active = false;
+    return 'DISMISS';
   }
 }
