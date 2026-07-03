@@ -15,6 +15,8 @@ class UpgradeUI {
       { name: 'Plasma Chain', desc: 'Chain shots hit nearby enemies', color: '#44ff88', icon: '⚡' },
       { name: 'Gravity Well', desc: 'Pull scrap & enemies closer', color: '#8844ff', icon: '◉' },
       { name: 'Solar Flare', desc: 'Periodic pulse destroys bullets', color: '#ffaa44', icon: '☀' },
+      { name: 'Spread Shot', desc: 'Fire 3 bullets in a fan', color: '#ffcc44', icon: '✦' },
+      { name: 'Homing Shot', desc: 'Bullets steer toward enemies', color: '#44ddff', icon: '🎯' },
       { name: 'Attack Speed', desc: '+25% fire rate', color: '#ff4466', icon: '↑' },
       { name: 'Damage Up', desc: '+30% bullet damage', color: '#ff6644', icon: '⚔' },
       { name: 'Shield Up', desc: '+1 shield charge', color: '#44aaff', icon: '⛡' },

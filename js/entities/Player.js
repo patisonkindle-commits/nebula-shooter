@@ -21,6 +21,8 @@ class Player {
     this.damageMultiplier = 1;
     this.moveSpeed = CONFIG.PLAYER_SPEED;
     this.shieldFlash = 0;
+    this.spreadLevel = 0;        // 0=normal, 1=spread shot
+    this.homingLevel = 0;        // 0=normal, 1=homing shot
   }
 
   reset(meta) {
@@ -37,6 +39,8 @@ class Player {
     this.damageMultiplier = m.damageMult || 1;
     this.fireRate = CONFIG.PLAYER_FIRE_RATE * (m.fireRateMult || 1);
     this.moveSpeed = CONFIG.PLAYER_SPEED * this.speedMultiplier;
+    this.spreadLevel = 0;
+    this.homingLevel = 0;
   }
 
   update(dt, input, entities) {
@@ -83,6 +87,27 @@ class Player {
   }
 
   _fire(entities) {
+    // Spread Shot pattern
+    if (this.spreadLevel >= 1) {
+      const count = 3 + (this.spreadLevel - 1) * 2; // 3, 5, 7...
+      const totalSpread = 0.4; // ~23°
+      for (let i = 0; i < count; i++) {
+        const t = (count === 1) ? 0 : (i / (count - 1)) - 0.5;
+        const angle = -Math.PI / 2 + t * totalSpread;
+        const homing = this.homingLevel >= 1;
+        entities.firePlayerBullet(this.x, this.y - this.radius, angle, this.damageMultiplier, homing, homing ? 4 : 0);
+      }
+      return;
+    }
+
+    // Homing single shot
+    if (this.homingLevel >= 1) {
+      const angle = -Math.PI / 2;
+      entities.firePlayerBullet(this.x, this.y - this.radius, angle, this.damageMultiplier, true, 4);
+      return;
+    }
+
+    // Default single shot with slight spread
     const spread = 0.07; // ±4°
     const angle = -Math.PI / 2 + (Math.random() - 0.5) * spread;
     entities.firePlayerBullet(this.x, this.y - this.radius, angle, this.damageMultiplier);

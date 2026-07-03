@@ -271,7 +271,7 @@ class Game {
 
   _updateEnemiesAndBullets(dt) {
     this.enemies.update(dt, this.player, this.bullets, this);
-    this.bullets.update(dt);
+    this.bullets.update(dt, this.enemies);
   }
 
   _updateWaves(dt) {
@@ -494,6 +494,12 @@ class Game {
       case 'Solar Flare':
         this._solarFlareActive = true;
         this._solarFlareTimer = 0;
+        break;
+      case 'Spread Shot':
+        this.player.spreadLevel++;
+        break;
+      case 'Homing Shot':
+        this.player.homingLevel++;
         break;
       case 'Attack Speed':
         this.player.fireRate *= 0.75;
