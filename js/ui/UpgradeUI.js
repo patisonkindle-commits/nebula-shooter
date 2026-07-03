@@ -19,6 +19,8 @@ class UpgradeUI {
       { name: 'Homing Shot', desc: 'Bullets steer toward enemies', color: '#44ddff', icon: '🎯' },
       { name: 'Piercing Shot', desc: 'Bullets pierce through enemies', color: '#ffdd44', icon: '⤊' },
       { name: 'Burst Shot', desc: 'Bullets explode into fragments', color: '#ff8844', icon: '💥' },
+      { name: 'Ricochet Shot', desc: 'Bullets bounce off walls', color: '#ffcc44', icon: '🎱' },
+      { name: 'Wave Shot', desc: 'Bullets travel in sine waves', color: '#44ff88', icon: '〰️' },
       { name: 'Attack Speed', desc: '+25% fire rate', color: '#ff4466', icon: '↑' },
       { name: 'Damage Up', desc: '+30% bullet damage', color: '#ff6644', icon: '⚔' },
       { name: 'Shield Up', desc: '+1 shield charge', color: '#44aaff', icon: '⛡' },

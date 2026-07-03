@@ -6,6 +6,9 @@ function createPlayerBullet() {
     homing: false, turnRate: 0,
     piercing: false, pierceRemaining: 0,
     burst: false, isBurstSub: false,
+    ricochet: false, ricochetRemaining: 0,
+    wave: false, waveTimer: 0, waveOffsetX: 0, waveOffsetY: 0,
+    waveBaseX: 0, waveBaseY: 0, waveAngle: 0,
   };
 }
 
@@ -24,7 +27,7 @@ class BulletManager {
     this._burstCallback = fn;
   }
 
-  firePlayerBullet(x, y, angle, damageMult = 1, homing = false, turnRate = 0, piercing = 0, burst = false, isBurstSub = false) {
+  firePlayerBullet(x, y, angle, damageMult = 1, homing = false, turnRate = 0, piercing = 0, burst = false, isBurstSub = false, ricochet = 0, wave = false) {
     const b = this.playerBullets.acquire();
     if (!b) return null;
     b.x = x; b.y = y;
@@ -37,8 +40,17 @@ class BulletManager {
     b.turnRate = turnRate;
     b.piercing = piercing > 0;
     b.pierceRemaining = piercing;
-    b.burst = burst && !isBurstSub; // burst subs don't burst again
+    b.burst = burst && !isBurstSub;
     b.isBurstSub = isBurstSub;
+    b.ricochet = ricochet > 0;
+    b.ricochetRemaining = ricochet;
+    b.wave = wave;
+    b.waveTimer = 0;
+    b.waveBaseX = x;
+    b.waveBaseY = y;
+    b.waveAngle = angle;
+    b.waveOffsetX = 0;
+    b.waveOffsetY = 0;
     return b;
   }
 
@@ -58,7 +70,7 @@ class BulletManager {
 
     this.playerBullets.updateAll(dt, (b) => {
       // Homing: steer toward nearest enemy
-      if (b.homing && enemies) {
+      if (b.homing && enemies && !b.wave) { // wave + homing not combined
         let nearest = null, nearDist = Infinity;
         for (const e of enemies.pool.active) {
           if (!e.alive) continue;
@@ -79,12 +91,61 @@ class BulletManager {
         }
       }
 
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-      if (b.x < -20 || b.x > W + 20 || b.y < -20 || b.y > H + 20) {
-        // Burst when going off-screen
+      // Wave motion: sine oscillation perpendicular to travel
+      if (b.wave) {
+        b.waveTimer += dt;
+        b.waveBaseX += b.vx * dt;
+        b.waveBaseY += b.vy * dt;
+        // Perpendicular offset (left/right relative to travel angle)
+        const amplitude = 15;
+        const frequency = 10;
+        const perpAngle = b.waveAngle + Math.PI / 2;
+        const offset = Math.sin(b.waveTimer * frequency) * amplitude;
+        b.x = b.waveBaseX + Math.cos(perpAngle) * offset;
+        b.y = b.waveBaseY + Math.sin(perpAngle) * offset;
+        b.waveOffsetX = Math.cos(perpAngle) * offset;
+        b.waveOffsetY = Math.sin(perpAngle) * offset;
+      } else {
+        // Normal movement
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+      }
+
+      // Boundary check
+      const cx = b.wave ? b.waveBaseX : b.x;
+      const cy = b.wave ? b.waveBaseY : b.y;
+
+      if (cx < -20 || cx > W + 20 || cy < -20 || cy > H + 20) {
+        // Ricochet off side/top walls
+        if (b.ricochet && b.ricochetRemaining > 0) {
+          if (cx < -20 || cx > W + 20) {
+            b.vx = -b.vx;
+            if (b.wave) {
+              b.waveAngle = Math.atan2(b.vy, b.vx);
+            }
+          }
+          if (cy < -20) {
+            b.vy = -b.vy;
+            if (b.wave) {
+              b.waveAngle = Math.atan2(b.vy, b.vx);
+            }
+          }
+          b.ricochetRemaining--;
+          // Reposition to inside boundary
+          if (b.wave) {
+            b.waveBaseX = clamp(b.waveBaseX, 10, W - 10);
+            b.waveBaseY = clamp(b.waveBaseY, 10, H - 10);
+          } else {
+            b.x = clamp(b.x, 10, W - 10);
+            b.y = clamp(b.y, 10, H - 10);
+          }
+          return;
+        }
+        // Burst when going off-screen (non-ricochet)
         if (b.burst && this._burstCallback) {
-          this._burstCallback(b.x, b.y, b.damage);
+          const burstX = b.wave ? b.waveBaseX : b.x;
+          const burstY = b.wave ? b.waveBaseY : b.y;
+          this._burstCallback(burstX, burstY, b.damage);
         }
         this.playerBullets.release(b);
       }
@@ -103,7 +164,67 @@ class BulletManager {
     this.playerBullets.forEach(b => {
       ctx.shadowBlur = 0;
 
-      if (b.burst) {
+      if (b.wave) {
+        // Wave shot — green sine wave trail
+        ctx.save();
+        ctx.strokeStyle = 'rgba(68, 255, 136, 0.15)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        const steps = 8;
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const px = b.waveBaseX - b.vx * t * 0.12 + b.waveOffsetX * (1 - t);
+          const py = b.waveBaseY - b.vy * t * 0.12 + b.waveOffsetY * (1 - t);
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // Main bullet — green diamond with glow
+        ctx.shadowColor = '#44ff88';
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = '#66ffaa';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Center bright spot
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#bbffdd';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (b.ricochet) {
+        // Ricochet shot — golden triangle with trail dots
+        // Trail dots
+        ctx.save();
+        for (let i = 1; i <= 3; i++) {
+          const alpha = 0.3 / i;
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = '#ffcc44';
+          ctx.shadowBlur = 0;
+          ctx.beginPath();
+          ctx.arc(b.x - b.vx * 0.04 * i, b.y - b.vy * 0.04 * i, 2.5 - i * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // Main bullet — diamond with gold glow
+        ctx.shadowColor = '#ffcc44';
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = '#ffdd66';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Center
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffeebb';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (b.burst) {
         // Burst bullet — pulsing orange glow ball
         const pulse = 1 + 0.25 * Math.sin(performance.now() * 0.008);
         ctx.shadowColor = '#ff6600';

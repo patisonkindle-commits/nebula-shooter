@@ -565,6 +565,12 @@ class Game {
       case 'Burst Shot':
         this.player.burstLevel++;
         break;
+      case 'Ricochet Shot':
+        this.player.ricochetLevel++;
+        break;
+      case 'Wave Shot':
+        this.player.waveLevel = 1;
+        break;
       case 'Attack Speed':
         this.player.fireRate *= 0.75;
         break;
