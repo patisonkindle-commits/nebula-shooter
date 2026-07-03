@@ -36,6 +36,7 @@ class Game {
     this.transitionTimer = 0;
     this.coreDropBonus = 0;
     this.spawnInterval = CONFIG.SPAWN_INTERVAL;
+    this._tier2Unlocked = false; // Burst/Ricochet/Wave unlocked after first boss
 
     // Run stats
     this.stats = {
@@ -560,8 +561,8 @@ class Game {
     this.audio.levelUp();
     this.announcements.push({ text: 'LEVEL UP!', timer: 2, y: CONFIG.HEIGHT * 0.3 });
 
-    // Show upgrade selection
-    this.upgradeUI.show(this.stats.upgrades);
+    // Update upgrade pool (tier-2 gating)
+    this.upgradeUI.show(this.stats.upgrades, this._tier2Unlocked);
     this.state = 'upgrade';
     this.timeScale = 0.3;
   }
@@ -615,6 +616,12 @@ class Game {
       case 'Magnet Up':
         this._magnetBonus = (this._magnetBonus || 1) * 1.4;
         break;
+      case 'Laser Beam':
+        this.player.laserLevel = (this.player.laserLevel || 0) + 1;
+        break;
+      case 'Orbital Shot':
+        this.player.orbitalLevel = (this.player.orbitalLevel || 0) + 1;
+        break;
     }
   }
 
@@ -626,6 +633,7 @@ class Game {
     this.screenFlash = 0.4;
     this.particles.bossExplosion(bx, by);
     this.stats.bossesKilled++;
+    this._tier2Unlocked = true; // Unlock Burst/Ricochet/Wave upgrades
     this.meta.earnCores(3);
     this.scrapManager.spawn(bx, by, 15);
     this.scrapManager.spawn(bx, by, 3, true);
@@ -977,6 +985,7 @@ class Game {
     this._solarFlareTimer = 0;
     this._magnetBonus = 0;
     this._burstPending = [];
+    this._tier2Unlocked = false;
     this._resetJuice();
 
     this.stats = {

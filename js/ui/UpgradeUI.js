@@ -6,7 +6,7 @@ class UpgradeUI {
     this.selectedIndex = -1;
   }
 
-  show(ownedUpgrades = []) {
+  show(ownedUpgrades = [], tier2Unlocked = false) {
     this.active = true;
     this.selectedIndex = -1;
     this.options = [];
@@ -30,8 +30,16 @@ class UpgradeUI {
       { name: 'Magnet Up', desc: '+40% collection radius', color: '#ff88ff', icon: '⌖' },
     ];
 
+    // Tier-2 upgrades (locked until first boss)
+    const tier2Names = ['Burst Shot', 'Ricochet Shot', 'Wave Shot'];
+
+    // Filter: only tier-2 upgrades if unlocked
+    const pool = allUpgrades.filter(u =>
+      !tier2Names.includes(u.name) || tier2Unlocked
+    );
+
     // Pick 3 random
-    const shuffled = [...allUpgrades].sort(() => Math.random() - 0.5);
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
     this.options = shuffled.slice(0, 3);
   }
 
