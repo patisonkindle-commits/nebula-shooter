@@ -163,6 +163,8 @@ class Game {
 
       case 'upgrade':
         // Slow-motion while upgrading
+        this.screenShake *= Math.pow(CONFIG.SCREEN_SHAKE_DECAY, dt * 60);
+        if (this.screenShake < 0.5) this.screenShake = 0;
         this.starField.update(dt * 0.3);
         this.particles.update(dt * 0.3);
         this._updateEnemiesAndBullets(dt * 0.1);
@@ -182,11 +184,11 @@ class Game {
 
       case 'gameover':
         // Decay the death explosion shake
-        this.screenShake *= 0.88;
+        this.screenShake *= Math.pow(0.88, dt * 60);
         if (this.screenShake < 0.5) this.screenShake = 0;
-        this.screenFlash *= CONFIG.FLASH_DECAY;
+        this.screenFlash *= Math.pow(CONFIG.FLASH_DECAY, dt * 60);
         if (this.screenFlash < 0.01) this.screenFlash = 0;
-        this.chromaticIntensity *= CONFIG.CHROMATIC_DECAY;
+        this.chromaticIntensity *= Math.pow(CONFIG.CHROMATIC_DECAY, dt * 60);
         if (this.chromaticIntensity < 0.5) this.chromaticIntensity = 0;
 
         // Stare at death screen — wait for tap
@@ -219,12 +221,12 @@ class Game {
     this.stats.timeSurvived += dt;
     this.starField.update(dt);
 
-    // Decay juice effects
-    this.screenShake *= CONFIG.SCREEN_SHAKE_DECAY;
+    // Decay juice effects (time-based)
+    this.screenShake *= Math.pow(CONFIG.SCREEN_SHAKE_DECAY, dt * 60);
     if (this.screenShake < 0.5) this.screenShake = 0;
-    this.chromaticIntensity *= CONFIG.CHROMATIC_DECAY;
+    this.chromaticIntensity *= Math.pow(CONFIG.CHROMATIC_DECAY, dt * 60);
     if (this.chromaticIntensity < 0.5) this.chromaticIntensity = 0;
-    this.screenFlash *= CONFIG.FLASH_DECAY;
+    this.screenFlash *= Math.pow(CONFIG.FLASH_DECAY, dt * 60);
     if (this.screenFlash < 0.01) this.screenFlash = 0;
     this.damageFlash *= 0.92;
     if (this.damageFlash < 0.01) this.damageFlash = 0;
@@ -975,6 +977,7 @@ class Game {
     this._solarFlareTimer = 0;
     this._magnetBonus = 0;
     this._burstPending = [];
+    this._resetJuice();
 
     this.stats = {
       enemiesKilled: 0,
