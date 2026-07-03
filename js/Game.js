@@ -65,6 +65,7 @@ class Game {
     this._solarFlareActive = false;
     this._solarFlareTimer = 0;
     this._magnetBonus = 0;
+    this._burstPending = [];
 
     // Score
     this.score = 0;
@@ -87,6 +88,10 @@ class Game {
 
   init() {
     this.input = new Input(this.canvas, () => this.audio.onInteraction());
+    // Burst callback — queue burst for delayed processing
+    this.bullets.setBurstCallback((x, y, dmg) => {
+      this._queueBurst(x, y, dmg);
+    });
   }
 
   // ─── Game Loop ───
@@ -242,6 +247,9 @@ class Game {
     // Collision
     this._checkCollisions();
 
+    // Process any queued bursts
+    this._processBursts();
+
     // Gravity Well — active pull every frame
     this._applyGravityWell(dt);
 
@@ -337,11 +345,17 @@ class Game {
   _checkCollisions() {
     // Player bullets vs enemies
     this.bullets.playerBullets.updateAll(0, (b) => {
-      for (const e of this.enemies.pool.active) {
+      // Snapshot enemies before iterating (damageEnemy splices active array)
+      const enemies = [...this.enemies.pool.active];
+      for (const e of enemies) {
         if (!e.alive) continue;
         const d = dist(b, e);
         if (d < e.radius + b.radius) {
-          this.bullets.playerBullets.release(b);
+          // Burst — queue burst before consuming
+          if (b.burst && !b.isBurstSub) {
+            this._queueBurst(b.x, b.y, b.damage);
+          }
+
           const killed = this.enemies.damageEnemy(e, b.damage, this);
           if (killed) {
             this._onEnemyKilled(e);
@@ -351,6 +365,19 @@ class Game {
               speed: 80, color: e.color, size: 2, life: 0.3
             });
           }
+
+          // Piercing: count down instead of releasing
+          if (b.piercing && b.pierceRemaining > 0) {
+            b.pierceRemaining--;
+            if (b.pierceRemaining <= 0) {
+              this.bullets.playerBullets.release(b);
+              return; // consumed
+            }
+            // Continue to next enemy in snapshot
+            continue;
+          }
+
+          this.bullets.playerBullets.release(b);
           return; // bullet consumed
         }
       }
@@ -415,6 +442,37 @@ class Game {
         }
       }
     });
+  }
+
+  _queueBurst(x, y, damage) {
+    this._burstPending.push({ x, y, damage });
+  }
+
+  _processBursts() {
+    if (this._burstPending.length === 0) return;
+    for (const bq of this._burstPending) {
+      // Spawn 6 sub-bullets in a circle
+      const count = 6;
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 / count) * i;
+        const sub = this.bullets.firePlayerBullet(
+          bq.x, bq.y, angle, bq.damage,
+          false, 0, 0, false, true // isBurstSub=true
+        );
+        if (sub) {
+          // Lower speed for burst sub-bullets
+          sub.vx *= 0.4;
+          sub.vy *= 0.4;
+          sub.damage = Math.max(1, Math.floor(bq.damage * 0.5));
+        }
+      }
+      // Visual: orange ring burst
+      this.particles.emit(bq.x, bq.y, 10, {
+        speed: 120, color: '#ff8844', size: 3, life: 0.4
+      });
+      this.screenShake = Math.max(this.screenShake, 3);
+    }
+    this._burstPending = [];
   }
 
   _onEnemyKilled(e) {
@@ -500,6 +558,12 @@ class Game {
         break;
       case 'Homing Shot':
         this.player.homingLevel++;
+        break;
+      case 'Piercing Shot':
+        this.player.piercingLevel++;
+        break;
+      case 'Burst Shot':
+        this.player.burstLevel++;
         break;
       case 'Attack Speed':
         this.player.fireRate *= 0.75;
@@ -838,6 +902,7 @@ class Game {
     this._solarFlareActive = false;
     this._solarFlareTimer = 0;
     this._magnetBonus = 0;
+    this._burstPending = [];
 
     this.stats = {
       enemiesKilled: 0,

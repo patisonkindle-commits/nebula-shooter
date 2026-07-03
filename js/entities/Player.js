@@ -23,6 +23,8 @@ class Player {
     this.shieldFlash = 0;
     this.spreadLevel = 0;        // 0=normal, 1=spread shot
     this.homingLevel = 0;        // 0=normal, 1=homing shot
+    this.piercingLevel = 0;      // 0=normal, 1+=pierces N enemies
+    this.burstLevel = 0;         // 0=normal, 1=burst on hit/offscreen
   }
 
   reset(meta) {
@@ -41,6 +43,8 @@ class Player {
     this.moveSpeed = CONFIG.PLAYER_SPEED * this.speedMultiplier;
     this.spreadLevel = 0;
     this.homingLevel = 0;
+    this.piercingLevel = 0;
+    this.burstLevel = 0;
   }
 
   update(dt, input, entities) {
@@ -87,6 +91,11 @@ class Player {
   }
 
   _fire(entities) {
+    const homing = this.homingLevel >= 1;
+    const homingRate = homing ? 4 : 0;
+    const piercing = this.piercingLevel;
+    const burst = this.burstLevel >= 1;
+
     // Spread Shot pattern
     if (this.spreadLevel >= 1) {
       const count = 3 + (this.spreadLevel - 1) * 2; // 3, 5, 7...
@@ -94,23 +103,22 @@ class Player {
       for (let i = 0; i < count; i++) {
         const t = (count === 1) ? 0 : (i / (count - 1)) - 0.5;
         const angle = -Math.PI / 2 + t * totalSpread;
-        const homing = this.homingLevel >= 1;
-        entities.firePlayerBullet(this.x, this.y - this.radius, angle, this.damageMultiplier, homing, homing ? 4 : 0);
+        entities.firePlayerBullet(this.x, this.y - this.radius, angle, this.damageMultiplier, homing, homingRate, piercing, burst);
       }
       return;
     }
 
-    // Homing single shot
-    if (this.homingLevel >= 1) {
+    // Homing single shot (piercing/burst apply too)
+    if (homing) {
       const angle = -Math.PI / 2;
-      entities.firePlayerBullet(this.x, this.y - this.radius, angle, this.damageMultiplier, true, 4);
+      entities.firePlayerBullet(this.x, this.y - this.radius, angle, this.damageMultiplier, true, 4, piercing, burst);
       return;
     }
 
     // Default single shot with slight spread
     const spread = 0.07; // ±4°
     const angle = -Math.PI / 2 + (Math.random() - 0.5) * spread;
-    entities.firePlayerBullet(this.x, this.y - this.radius, angle, this.damageMultiplier);
+    entities.firePlayerBullet(this.x, this.y - this.radius, angle, this.damageMultiplier, false, 0, piercing, burst);
   }
 
   takeDamage(amount, entities) {

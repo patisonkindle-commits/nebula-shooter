@@ -17,6 +17,8 @@ class UpgradeUI {
       { name: 'Solar Flare', desc: 'Periodic pulse destroys bullets', color: '#ffaa44', icon: '☀' },
       { name: 'Spread Shot', desc: 'Fire 3 bullets in a fan', color: '#ffcc44', icon: '✦' },
       { name: 'Homing Shot', desc: 'Bullets steer toward enemies', color: '#44ddff', icon: '🎯' },
+      { name: 'Piercing Shot', desc: 'Bullets pierce through enemies', color: '#ffdd44', icon: '⤊' },
+      { name: 'Burst Shot', desc: 'Bullets explode into fragments', color: '#ff8844', icon: '💥' },
       { name: 'Attack Speed', desc: '+25% fire rate', color: '#ff4466', icon: '↑' },
       { name: 'Damage Up', desc: '+30% bullet damage', color: '#ff6644', icon: '⚔' },
       { name: 'Shield Up', desc: '+1 shield charge', color: '#44aaff', icon: '⛡' },
