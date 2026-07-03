@@ -21,6 +21,8 @@ class UpgradeUI {
       { name: 'Burst Shot', desc: 'Bullets explode into fragments', color: '#ff8844', icon: '💥' },
       { name: 'Ricochet Shot', desc: 'Bullets bounce off walls', color: '#ffcc44', icon: '🎱' },
       { name: 'Wave Shot', desc: 'Bullets travel in sine waves', color: '#44ff88', icon: '〰️' },
+      { name: 'Laser Beam', desc: 'Continuous beam of energy', color: '#ff4444', icon: '🔥' },
+      { name: 'Orbital Shot', desc: 'Orbiting projectiles fire at enemies', color: '#cc77ff', icon: '🪐' },
       { name: 'Attack Speed', desc: '+25% fire rate', color: '#ff4466', icon: '↑' },
       { name: 'Damage Up', desc: '+30% bullet damage', color: '#ff6644', icon: '⚔' },
       { name: 'Shield Up', desc: '+1 shield charge', color: '#44aaff', icon: '⛡' },

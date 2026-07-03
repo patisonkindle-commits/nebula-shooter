@@ -27,6 +27,12 @@ class Player {
     this.burstLevel = 0;         // 0=normal, 1=burst on hit/offscreen
     this.ricochetLevel = 0;    // 0=normal, 1+=ricochets off walls
     this.waveLevel = 0;        // 0=normal, 1=sine wave motion
+    this.laserLevel = 0;       // 0=off, 1+=laser beam duration+power
+    this.laserActive = false;  // beam currently firing
+    this.laserTimer = 0;       // remaining beam time
+    this.laserCooldown = 0;    // cooldown before next beam
+    this.orbitalLevel = 0;     // 0=off, 1+=orbiting projectiles
+    this.orbitals = [];        // [{angle, fireCooldown}]
   }
 
   reset(meta) {
@@ -49,9 +55,15 @@ class Player {
     this.burstLevel = 0;
     this.ricochetLevel = 0;
     this.waveLevel = 0;
+    this.laserLevel = 0;
+    this.laserActive = false;
+    this.laserTimer = 0;
+    this.laserCooldown = 0;
+    this.orbitalLevel = 0;
+    this.orbitals = [];
   }
 
-  update(dt, input, entities) {
+  update(dt, input, entities, enemies) {
     if (!this.alive) return;
 
     // Movement
@@ -76,12 +88,35 @@ class Player {
     this.x = clamp(this.x, this.radius, CONFIG.WIDTH - this.radius);
     this.y = clamp(this.y, this.radius * 0.5, CONFIG.HEIGHT - this.radius);
 
-    // Auto-fire
+    // Laser timer & cooldown
+    if (this.laserActive) {
+      this.laserTimer -= dt;
+      if (this.laserTimer <= 0) {
+        this.laserActive = false;
+        this.laserCooldown = 2.5;
+      }
+    } else if (this.laserCooldown > 0) {
+      this.laserCooldown -= dt;
+    }
+
+    // Auto-fire (skip during laser beam)
     this.fireTimer -= dt;
     if (this.fireTimer <= 0) {
       this.fireTimer = this.fireRate;
-      this._fire(entities);
+      if (!this.laserActive) {
+        this._fire(entities);
+      }
     }
+
+    // Activate laser when cooldown ready (replaces auto-fire)
+    if (this.laserLevel >= 1 && this.laserCooldown <= 0 && !this.laserActive) {
+      // Check fire timer just triggered (or we can activate independently)
+      this.laserActive = true;
+      this.laserTimer = 1.2 + this.laserLevel * 0.15;
+    }
+
+    // Orbital update
+    this._updateOrbitals(dt, entities, enemies);
 
     // Invincibility
     if (this.invincibleTimer > 0) this.invincibleTimer -= dt;
@@ -125,6 +160,48 @@ class Player {
     const spread = 0.07; // ±4°
     const angle = -Math.PI / 2 + (Math.random() - 0.5) * spread;
     entities.firePlayerBullet(this.x, this.y - this.radius, angle, this.damageMultiplier, false, 0, piercing, burst, false, ricochet, wave);
+  }
+
+  _updateOrbitals(dt, entities, enemies) {
+    if (this.orbitalLevel < 1 || !enemies) return;
+    const orbCount = 2 + this.orbitalLevel; // 3, 4, 5 orbs at level 1,2,3
+    const radius = 32;
+    const orbSpeed = 2.5; // rad/s
+
+    // Ensure orbital array size matches level
+    while (this.orbitals.length < orbCount) {
+      const idx = this.orbitals.length;
+      this.orbitals.push({
+        angle: (Math.PI * 2 / orbCount) * idx,
+        fireCooldown: 0.5
+      });
+    }
+
+    for (const orb of this.orbitals) {
+      orb.angle += orbSpeed * dt;
+      orb.angle %= Math.PI * 2;
+      orb.fireCooldown -= dt;
+
+      // Fire when enemy is in range
+      if (orb.fireCooldown <= 0) {
+        let nearest = null, nearDist = Infinity;
+        for (const e of enemies.pool.active) {
+          if (!e.alive) continue;
+          const d = dist(e, this);
+          if (d < nearDist && d < 200) { nearDist = d; nearest = e; }
+        }
+        if (nearest) {
+          const ox = this.x + Math.cos(orb.angle) * radius;
+          const oy = this.y + Math.sin(orb.angle) * radius;
+          const fireAngle = Math.atan2(nearest.y - oy, nearest.x - ox);
+          entities.firePlayerBullet(
+            ox, oy, fireAngle, this.damageMultiplier,
+            true, 3, this.piercingLevel, false, false, this.ricochetLevel, false
+          );
+          orb.fireCooldown = 0.6 + Math.random() * 0.2;
+        }
+      }
+    }
   }
 
   takeDamage(amount, entities) {
@@ -223,5 +300,30 @@ class Player {
     }
 
     ctx.restore();
+
+    // Orbital projectiles
+    if (this.orbitalLevel >= 1) {
+      const radius = 32;
+      for (const orb of this.orbitals) {
+        const ox = this.x + Math.cos(orb.angle) * radius;
+        const oy = this.y + Math.sin(orb.angle) * radius;
+
+        // Orb glow
+        ctx.shadowColor = '#dd66ff';
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = '#cc77ff';
+        ctx.beginPath();
+        ctx.arc(ox, oy, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Orb core
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffbbff';
+        ctx.beginPath();
+        ctx.arc(ox, oy, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+    }
   }
 }

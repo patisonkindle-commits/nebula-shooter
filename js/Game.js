@@ -229,7 +229,7 @@ class Game {
     this.damageFlash *= 0.92;
     if (this.damageFlash < 0.01) this.damageFlash = 0;
 
-    this.player.update(dt, this.input, this.bullets);
+    this.player.update(dt, this.input, this.bullets, this.enemies);
     this._updateEnemiesAndBullets(dt);
 
     // Solar Flare — periodic pulse clears enemy bullets
@@ -382,6 +382,31 @@ class Game {
         }
       }
     });
+    // Laser beam collision — runs every frame when active
+    if (this.player.alive && this.player.laserActive) {
+      const p = this.player;
+      const cx = p.x;
+      const cy = p.y - p.radius;
+      const beamLength = 500;
+      const beamWidth = 16;
+      const enemiesCopy = [...this.enemies.pool.active];
+      for (const e of enemiesCopy) {
+        if (!e.alive) continue;
+        if (e.y > cy || e.y < cy - beamLength) continue;
+        if (Math.abs(e.x - cx) < beamWidth + e.radius) {
+          const killed = this.enemies.damageEnemy(e, 0.2, this);
+          if (killed) {
+            this._onEnemyKilled(e);
+          }
+        }
+      }
+      // Small particles for heat effect
+      if (Math.random() < 0.3) {
+        this.particles.emit(cx + (Math.random() - 0.5) * 6, cy - Math.random() * beamLength * 0.8, 1, {
+          speed: 20, color: '#ff2222', size: 2, life: 0.12
+        });
+      }
+    }
 
     // Enemy bullets vs player
     if (this.player.alive) {
@@ -672,6 +697,47 @@ class Game {
     this.bullets.renderPlayerBullets(ctx);
     this.bullets.renderEnemyBullets(ctx);
     this.player.render(ctx);
+
+    // Laser beam render — below particles for layered effect
+    if (this.player.alive && this.player.laserActive) {
+      const p = this.player;
+      const beamLength = 500;
+      const peakGlow = 0.6 + 0.4 * Math.sin(performance.now() * 0.02);
+      
+      // Outer glow
+      ctx.save();
+      const grad = ctx.createLinearGradient(p.x, p.y - p.radius, p.x, p.y - p.radius - beamLength);
+      grad.addColorStop(0, `rgba(255, 60, 60, ${peakGlow * 0.25})`);
+      grad.addColorStop(0.4, `rgba(255, 200, 80, ${peakGlow * 0.12})`);
+      grad.addColorStop(1, 'rgba(255, 60, 60, 0)');
+      ctx.fillStyle = grad;
+      ctx.shadowColor = '#ff4444';
+      ctx.shadowBlur = 30 * peakGlow;
+      ctx.beginPath();
+      ctx.roundRect(p.x - 20, p.y - p.radius - beamLength, 40, beamLength, 10);
+      ctx.fill();
+      
+      // Core beam
+      ctx.shadowColor = '#ff2222';
+      ctx.shadowBlur = 20;
+      ctx.strokeStyle = `rgba(255, 80, 80, ${peakGlow * 0.9})`;
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - p.radius);
+      ctx.lineTo(p.x, p.y - p.radius - beamLength);
+      ctx.stroke();
+      
+      // Hot center
+      ctx.shadowBlur = 8;
+      ctx.strokeStyle = `rgba(255, 220, 180, ${peakGlow})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - p.radius);
+      ctx.lineTo(p.x, p.y - p.radius - beamLength);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     this.particles.render(ctx);
     this.popup.render(ctx);
 
