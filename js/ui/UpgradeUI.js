@@ -31,7 +31,7 @@ class UpgradeUI {
     ];
 
     // Tier-2 upgrades (locked until first boss)
-    const tier2Names = ['Burst Shot', 'Ricochet Shot', 'Wave Shot'];
+    const tier2Names = ['Laser Beam', 'Orbital Shot'];
 
     // Filter: only tier-2 upgrades if unlocked
     const pool = allUpgrades.filter(u =>
