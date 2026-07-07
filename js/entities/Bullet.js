@@ -13,7 +13,7 @@ function createPlayerBullet() {
 }
 
 function createEnemyBullet() {
-  return { x: 0, y: 0, vx: 0, vy: 0, radius: 4, alive: false, damage: 1, isEnemy: true };
+  return { x: 0, y: 0, vx: 0, vy: 0, radius: 4, alive: false, damage: 1, isEnemy: true, color: '#ff6644', isMine: false, mineTimer: 0 };
 }
 
 class BulletManager {
@@ -54,7 +54,7 @@ class BulletManager {
     return b;
   }
 
-  fireEnemyBullet(x, y, angle, speed) {
+  fireEnemyBullet(x, y, angle, speed, color) {
     const b = this.enemyBullets.acquire();
     if (!b) return;
     b.x = x; b.y = y;
@@ -63,6 +63,7 @@ class BulletManager {
     b.damage = 1;
     b.radius = 4;
     b.isEnemy = true;
+    b.color = color || '#ff6644';
   }
 
   update(dt, enemies) {
@@ -152,6 +153,8 @@ class BulletManager {
     });
 
     this.enemyBullets.updateAll(dt, (b) => {
+      // Mines don't move and should stay until timer expires
+      if (b.isMine) return;
       b.x += b.vx * dt;
       b.y += b.vy * dt;
       if (b.x < -20 || b.x > W + 20 || b.y < -20 || b.y > H + 20) {
@@ -291,12 +294,53 @@ class BulletManager {
 
   renderEnemyBullets(ctx) {
     this.enemyBullets.forEach(b => {
-      ctx.fillStyle = '#ff6644';
-      ctx.shadowColor = '#ff4400';
+      if (b.isMine) {
+        // Mine render — pulsing green circle with cross
+        const pulse = 1 + 0.2 * Math.sin(performance.now() * 0.006);
+        ctx.save();
+        ctx.shadowColor = '#88ff44';
+        ctx.shadowBlur = 12 * pulse;
+        ctx.fillStyle = '#44aa22';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        // Cross pattern
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#aaff66';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(b.x - b.radius * 0.5, b.y);
+        ctx.lineTo(b.x + b.radius * 0.5, b.y);
+        ctx.moveTo(b.x, b.y - b.radius * 0.5);
+        ctx.lineTo(b.x, b.y + b.radius * 0.5);
+        ctx.stroke();
+        // Danger blink when about to expire
+        if (b.mineTimer < 1) {
+          ctx.fillStyle = `rgba(255, 255, 100, ${0.3 + 0.7 * Math.sin(performance.now() * 0.02)})`;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.radius + 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+        return;
+      }
+      ctx.fillStyle = b.color || '#ff6644';
+      ctx.shadowColor = b.color || '#ff4400';
       ctx.shadowBlur = 6;
       ctx.beginPath();
       ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
       ctx.fill();
+      // Extra glow ring for colored bullets
+      if (b.color !== '#ff6644' && b.color !== '#ff4400') {
+        ctx.shadowBlur = 10;
+        ctx.strokeStyle = b.color;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.4;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius + 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
       ctx.shadowBlur = 0;
     });
   }

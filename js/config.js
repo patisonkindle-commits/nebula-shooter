@@ -34,6 +34,9 @@ const CONFIG = {
   TANK:    { hp: 4, speed: 50,  radius: 16, score: 30, color: '#8844ff' },
   KAMIKAZE:{ hp: 2, speed: 180, radius: 12, score: 20, color: '#ff6600' },
   BLOCKER: { hp: 3, speed: 40,  radius: 18, score: 25, color: '#44aaff' },
+  VORTEX:  { hp: 5, speed: 55,  radius: 18, score: 45, color: '#44ffdd' },
+  MINELAYER:{ hp: 4, speed: 35,  radius: 16, score: 35, color: '#88ff44' },
+  WARP:    { hp: 2, speed: 100, radius: 12, score: 30, color: '#dd77ff' },
 
   // Boss
   BOSS_HP: 50,
@@ -42,6 +45,13 @@ const CONFIG = {
   BOSS_SCORE: 200,
   BOSS_FIRE_RATE: 1.5,
   BOSS_RING_SIZE: 10,
+  BOSS_CROSS_BULLETS: 4,
+  BOSS_CROSS_RATE: 2.5,
+  BOSS_EXPANDING_RATE: 4,
+  BOSS_EXPANDING_COUNT: 16,
+  BOSS_STAR_ARMS: 12,
+  BOSS_STAR_TURNS: 3,
+  BOSS_SPRAY_ANGLE: 0.4,
 
   // Solar flare interval (seconds)
   SOLAR_FLARE_INTERVAL: 8,

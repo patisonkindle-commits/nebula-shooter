@@ -253,6 +253,9 @@ class Game {
     // Process any queued bursts
     this._processBursts();
 
+    // Update mine timers
+    this._updateMines(dt);
+
     // Gravity Well — active pull every frame
     this._applyGravityWell(dt);
 
@@ -334,12 +337,22 @@ class Game {
       if (!snapshot.includes('kamikaze') && Math.random() < 0.4) types.push('kamikaze');
     }
 
-    // Later waves: more variety
+    // Later waves: more variety and new types
     if (this.wave >= 3) {
       types.push('sniper', 'kamikaze', 'blocker', 'blocker');
     }
     if (this.wave >= 5) {
       types.push('tank', 'tank');
+    }
+    // New enemy types introduced at specific waves
+    if (this.wave >= 4) {
+      types.push('vortex', 'vortex');
+    }
+    if (this.wave >= 6) {
+      types.push('minelayer', 'minelayer');
+    }
+    if (this.wave >= 7) {
+      types.push('warp', 'warp');
     }
     const type = types[Math.floor(Math.random() * types.length)];
     this.enemies.spawn(type);
@@ -411,13 +424,20 @@ class Game {
       }
     }
 
-    // Enemy bullets vs player
+    // Enemy bullets vs player (including mines)
     if (this.player.alive) {
       this.bullets.enemyBullets.updateAll(0, (b) => {
         const d = dist(b, this.player);
         if (d < this.player.hitboxRadius + b.radius) {
+          if (b.isMine) {
+            // Mine explosion on contact
+            this.particles.emit(b.x, b.y, 15, {
+              speed: 120, color: '#88ff44', size: 4, life: 0.5
+            });
+            this.screenShake = Math.max(this.screenShake, 5);
+          }
           this.bullets.enemyBullets.release(b);
-          const took = this.player.takeDamage(b.damage, this);
+          const took = this.player.takeDamage(b.damage * (b.isMine ? 1 : 1), this);
           if (took) {
             this.stats.totalDamageTaken += b.damage;
             this._onPlayerHit();
@@ -968,6 +988,35 @@ class Game {
   }
 
   // ─── Game State Transitions ───
+
+  // Spawn a mine from MineLayer
+  spawnMine(x, y) {
+    const b = this.bullets.enemyBullets.acquire();
+    if (!b) return;
+    b.x = x; b.y = y;
+    b.vx = 0; b.vy = 0;
+    b.damage = 1;
+    b.radius = 7;
+    b.isEnemy = true;
+    b.color = '#88ff44';
+    b.isMine = true;
+    b.mineTimer = 4; // auto-destruct after 4s
+    // Visual indicator
+    this.particles.emit(x, y, 6, {
+      speed: 40, color: '#88ff44', size: 3, life: 0.3
+    });
+  }
+
+  // Update mines timer in the playing loop
+  _updateMines(dt) {
+    this.bullets.enemyBullets.updateAll(dt, (b) => {
+      if (!b.isMine) return;
+      b.mineTimer -= dt;
+      if (b.mineTimer <= 0) {
+        this.bullets.enemyBullets.release(b);
+      }
+    });
+  }
 
   startGame() {
     this.state = 'playing';
