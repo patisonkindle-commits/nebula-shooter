@@ -200,6 +200,8 @@ class Game {
             this.showMeta();
           } else {
             this.state = 'menu';
+            this.audio.bgmStart('menu');
+            this._bgmStarted = true;
             this._resetJuice();
           }
         }
@@ -1074,6 +1076,7 @@ class Game {
     this.stats.restarts++;
     this.audio.bgmStop();
     this.audio.gameOver();
+    this._bgmStarted = false;
     this.screenShake = 10;
     this.chromaticIntensity = 8;
     this.screenFlash = 0.3;
