@@ -228,37 +228,44 @@ class Player {
   render(ctx) {
     if (!this.alive) return;
 
-    // Engine glow
-    const grad = ctx.createRadialGradient(this.x, this.y + 14, 2, this.x, this.y + 14, 22);
-    grad.addColorStop(0, `rgba(100, 180, 255, ${this.enginePulse * 0.6})`);
-    grad.addColorStop(1, 'rgba(100, 180, 255, 0)');
-    ctx.fillStyle = grad;
+    // Engine glow — animated flame
+    const flamePulse = 0.7 + 0.3 * Math.sin(performance.now() * 0.012 + this.enginePulse * 2);
+    const flameLen = 14 + 8 * Math.sin(performance.now() * 0.015);
+    
+    // Outer glow cone
+    const outerGrad = ctx.createRadialGradient(this.x, this.y + 14 + flameLen * 0.3, 2, this.x, this.y + 14 + flameLen * 0.3, flameLen * 2);
+    outerGrad.addColorStop(0, `rgba(100, 180, 255, ${flamePulse * 0.35})`);
+    outerGrad.addColorStop(0.5, `rgba(50, 100, 200, ${flamePulse * 0.12})`);
+    outerGrad.addColorStop(1, 'rgba(100, 180, 255, 0)');
+    ctx.fillStyle = outerGrad;
     ctx.beginPath();
-    ctx.arc(this.x, this.y + 14, 22, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y + 14 + flameLen * 0.3, flameLen * 2, 0, Math.PI * 2);
     ctx.fill();
 
     // Motion trail
     for (let i = 0; i < this.trail.length; i++) {
-      ctx.globalAlpha = (1 - i / this.trail.length) * 0.25;
+      ctx.globalAlpha = (1 - i / this.trail.length) * 0.2;
       ctx.fillStyle = '#8ac4ff';
+      ctx.shadowColor = '#4a9eff';
+      ctx.shadowBlur = 4 * (1 - i / this.trail.length);
       ctx.beginPath();
       ctx.arc(this.trail[i].x, this.trail[i].y, (1 - i / this.trail.length) * 3, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
 
-    // Ship body — sleek triangle
+    // Ship body — sleek triangle with stronger glow
     ctx.save();
     ctx.translate(this.x, this.y);
 
-    // Ship glow
+    // Ship glow — stronger
     ctx.shadowColor = '#4a9eff';
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 18;
 
     const blink = this.invincibleTimer > 0 && Math.sin(this.invincibleTimer * 30) > 0;
     if (blink) ctx.globalAlpha = 0.5;
 
-    // Main hull
+    // Main hull — deeper blue with brighter edge
     ctx.beginPath();
     ctx.moveTo(0, -this.radius);
     ctx.lineTo(-this.radius * 0.8, this.radius * 0.7);
@@ -267,13 +274,27 @@ class Player {
     ctx.lineTo(this.radius * 0.35, this.radius * 0.4);
     ctx.lineTo(this.radius * 0.8, this.radius * 0.7);
     ctx.closePath();
-    ctx.fillStyle = '#1a2a4a';
+    ctx.fillStyle = '#0f1e3a';
     ctx.fill();
+    
+    // Hull edge glow
+    ctx.shadowBlur = 0;
     ctx.strokeStyle = '#4a9eff';
     ctx.lineWidth = 1.5;
     ctx.stroke();
+    
+    // Inner hull highlight
+    ctx.beginPath();
+    ctx.moveTo(0, -this.radius + 4);
+    ctx.lineTo(-this.radius * 0.4, this.radius * 0.2);
+    ctx.lineTo(this.radius * 0.4, this.radius * 0.2);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(74, 158, 255, 0.08)';
+    ctx.fill();
 
     // Cockpit
+    ctx.shadowColor = '#4a9eff';
+    ctx.shadowBlur = 8;
     ctx.beginPath();
     ctx.moveTo(0, -this.radius * 0.65);
     ctx.lineTo(-5, -this.radius * 0.15);

@@ -233,6 +233,17 @@ class Game {
     if (this.damageFlash < 0.01) this.damageFlash = 0;
 
     this.player.update(dt, this.input, this.bullets, this.enemies);
+
+    // Player engine trail particles
+    if (this.player.alive) {
+      this.particles.engineTrail(
+        this.player.x + rand(-4, 4),
+        this.player.y + this.player.radius * 0.6,
+        Math.floor(dt * 30),
+        this._solarFlareActive ? '#ff8844' : '#4a9eff'
+      );
+    }
+
     this._updateEnemiesAndBullets(dt);
 
     // Solar Flare — periodic pulse clears enemy bullets
@@ -319,7 +330,7 @@ class Game {
     // Elite wave: boss at wave BOSS_WAVE
     if (this.wave === CONFIG.BOSS_WAVE && !this.enemies.bossSpawnedThisWave && this.enemiesSpawnedThisWave >= this.enemiesThisWave * 0.5) {
       this.enemies.bossSpawnedThisWave = true;
-      this.enemies.spawnBoss();
+      this.enemies.spawnBoss(this.wave);
       this.audio.bossWarning();
       this.audio.bgmSetState('boss');
       this.screenShake = 8;
@@ -355,7 +366,7 @@ class Game {
       types.push('warp', 'warp');
     }
     const type = types[Math.floor(Math.random() * types.length)];
-    this.enemies.spawn(type);
+    this.enemies.spawn(type, null, null, this.wave);
   }
 
   _checkCollisions() {
@@ -437,9 +448,10 @@ class Game {
             this.screenShake = Math.max(this.screenShake, 5);
           }
           this.bullets.enemyBullets.release(b);
-          const took = this.player.takeDamage(b.damage * (b.isMine ? 1 : 1), this);
+          const dmg = b.damage;
+          const took = this.player.takeDamage(dmg, this);
           if (took) {
-            this.stats.totalDamageTaken += b.damage;
+            this.stats.totalDamageTaken += dmg;
             this._onPlayerHit();
           }
           return;
@@ -995,7 +1007,7 @@ class Game {
     if (!b) return;
     b.x = x; b.y = y;
     b.vx = 0; b.vy = 0;
-    b.damage = 1;
+    b.damage = CONFIG.BOSS_DAMAGE;
     b.radius = 7;
     b.isEnemy = true;
     b.color = '#88ff44';

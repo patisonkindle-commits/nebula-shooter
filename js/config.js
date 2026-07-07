@@ -1,22 +1,22 @@
-// Project Nebula — all tunable constants
+// Project Nebula — all tunable constants (v2 — balanced)
 const CONFIG = {
   WIDTH: 400,
   HEIGHT: 720,
   UPWARD_OFFSET: 70,
   PLAYER_RADIUS: 14,
   HITBOX_RADIUS: 4,
-  PLAYER_SPEED: 220,
+  PLAYER_SPEED: 240,
   PLAYER_MAX_HP: 3,
-  PLAYER_FIRE_RATE: 0.15,
-  PLAYER_BULLET_SPEED: 500,
+  PLAYER_FIRE_RATE: 0.14,
+  PLAYER_BULLET_SPEED: 520,
   PLAYER_BULLET_DAMAGE: 1,
-  PLAYER_INVINCIBLE_TIME: 1.5,
+  PLAYER_INVINCIBLE_TIME: 1.2,
   BULLET_POOL_SIZE: 400,
-  ENEMY_BULLET_SPEED: 200,
+  ENEMY_BULLET_SPEED: 220,
   ENEMY_POOL_SIZE: 80,
   SCRAP_POOL_SIZE: 100,
-  PARTICLE_POOL_SIZE: 500,
-  STAR_COUNT: 60,
+  PARTICLE_POOL_SIZE: 600,
+  STAR_COUNT: 80,
   SCRAP_COLLECT_RADIUS: 24,
   SCRAP_AUTO_COLLECT_RADIUS: 22,
   CORE_CHANCE: 0.08,
@@ -28,7 +28,7 @@ const CONFIG = {
   ENEMIES_PER_WAVE: 6,
   SPAWN_INTERVAL: 0.8,
 
-  // Enemy archetypes
+  // Enemy archetypes — balanced HP/Damage scaling tier
   SWARMER: { hp: 1, speed: 120, radius: 10, score: 10, color: '#ff4466' },
   SNIPER:  { hp: 1, speed: 60,  radius: 10, score: 15, color: '#ffaa00' },
   TANK:    { hp: 4, speed: 50,  radius: 16, score: 30, color: '#8844ff' },
@@ -38,13 +38,24 @@ const CONFIG = {
   MINELAYER:{ hp: 4, speed: 35,  radius: 16, score: 35, color: '#88ff44' },
   WARP:    { hp: 2, speed: 100, radius: 12, score: 30, color: '#dd77ff' },
 
+  // Wave scaling — enemy stats multiply per wave
+  WAVE_HP_SCALE: 0.06,       // +6% HP per wave
+  WAVE_SPEED_SCALE: 0.015,   // +1.5% speed per wave
+  WAVE_SCORE_SCALE: 0.08,    // +8% score per wave
+  WAVE_DAMAGE_SCALE: 0.04,   // +4% enemy bullet damage per wave
+
+  // Sub-wave elite enemies (every ELITE_WAVE_INTERVAL waves)
+  ELITE_HP_BONUS: 0.5,      // +50% HP for elites
+  ELITE_SCORE_BONUS: 2,     // ×2 score for elites
+  ELITE_SPEED_BONUS: 0.15,  // +15% speed for elites
+
   // Boss
-  BOSS_HP: 50,
+  BOSS_HP: 60,
   BOSS_SPEED: 60,
   BOSS_RADIUS: 32,
-  BOSS_SCORE: 200,
-  BOSS_FIRE_RATE: 1.5,
-  BOSS_RING_SIZE: 10,
+  BOSS_SCORE: 300,
+  BOSS_FIRE_RATE: 1.8,
+  BOSS_RING_SIZE: 12,
   BOSS_CROSS_BULLETS: 4,
   BOSS_CROSS_RATE: 2.5,
   BOSS_EXPANDING_RATE: 4,
@@ -52,6 +63,7 @@ const CONFIG = {
   BOSS_STAR_ARMS: 12,
   BOSS_STAR_TURNS: 3,
   BOSS_SPRAY_ANGLE: 0.4,
+  BOSS_DAMAGE: 2,            // Boss hits for 2 HP
 
   // Solar flare interval (seconds)
   SOLAR_FLARE_INTERVAL: 8,
@@ -66,11 +78,12 @@ const CONFIG = {
   SCRAP_SPEED: 60,
   CORE_COST_BASE: 10,
 
-  // Juice
+  // Juice — more impactful feel
   SCREEN_SHAKE_DECAY: 0.85,
   CHROMATIC_DECAY: 0.88,
-  HIT_PAUSE_DURATION: 0.08,
+  HIT_PAUSE_DURATION: 0.10,
   FLASH_DECAY: 0.92,
+  MIN_SHAKE_THRESHOLD: 0.8,
 
   // Metaprogression nodes
   META_NODES: {

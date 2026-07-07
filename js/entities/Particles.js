@@ -1,4 +1,4 @@
-// Particle system — explosions, trails, sparkles
+// Particle system — explosions, trails, sparkles, with glow
 function createParticle() {
   return { x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 1, color: '#fff', size: 3, alive: false };
 }
@@ -36,13 +36,24 @@ class ParticleSystem {
   }
 
   bossExplosion(x, y) {
-    this.emit(x, y, 40, { speed: 300, color: '#ff44ff', size: 5, life: 0.8 });
-    this.emit(x, y, 30, { speed: 200, color: '#ff88ff', size: 3, life: 0.6 });
-    this.emit(x, y, 20, { speed: 150, color: '#ffffff', size: 2, life: 0.5 });
+    this.emit(x, y, 50, { speed: 350, color: '#ff44ff', size: 6, life: 1.0 });
+    this.emit(x, y, 40, { speed: 250, color: '#ff88ff', size: 4, life: 0.7 });
+    this.emit(x, y, 25, { speed: 150, color: '#ffffff', size: 2.5, life: 0.5 });
   }
 
   scrapBurst(x, y) {
-    this.emit(x, y, 6, { speed: 80, color: '#44ff88', size: 2.5, life: 0.4 });
+    this.emit(x, y, 8, { speed: 90, color: '#44ff88', size: 3, life: 0.45 });
+  }
+
+  // Player engine trail
+  engineTrail(x, y, count, color) {
+    this.emit(x, y, count, { speed: 40, color: color || '#4a9eff', size: 2.5, life: 0.35, direction: Math.PI / 2, spread: 0.6 });
+  }
+
+  // Mine explosion (green)
+  mineExplosion(x, y) {
+    this.emit(x, y, 20, { speed: 140, color: '#88ff44', size: 4, life: 0.5 });
+    this.emit(x, y, 10, { speed: 100, color: '#ccff66', size: 2, life: 0.3 });
   }
 
   update(dt) {
@@ -62,11 +73,29 @@ class ParticleSystem {
     this.pool.forEach(p => {
       const t = p.life / p.maxLife;
       ctx.globalAlpha = t;
+
+      // Glow behind bright particles
+      if (p.size > 2) {
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = p.size * 3;
+      }
+
       ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size * t, 0, Math.PI * 2);
       ctx.fill();
+
+      // Extra sparkle for white/very bright particles
+      if (p.life > p.maxLife * 0.7 && p.size > 2.5) {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = t * 0.5;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * t * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
     });
+    ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
   }
 

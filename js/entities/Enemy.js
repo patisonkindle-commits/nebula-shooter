@@ -29,17 +29,32 @@ class EnemyManager {
 
   get count() { return this.pool.count; }
 
-  spawn(type, x, y) {
+  spawn(type, x, y, wave) {
     const e = this.pool.acquire();
     if (!e) return null;
     const t = CONFIG[type.toUpperCase()];
+    const waveScale = wave ? (1 + CONFIG.WAVE_HP_SCALE * wave) : 1;
+    const scoreScale = wave ? (1 + CONFIG.WAVE_SCORE_SCALE * wave) : 1;
+    const speedScale = wave ? (1 + CONFIG.WAVE_SPEED_SCALE * wave) : 1;
+
+    // Elite wave bonus (every ELITE_WAVE_INTERVAL starting at that wave)
+    let eliteMult = 1;
+    if (wave && wave % CONFIG.ELITE_WAVE_INTERVAL === 0 && wave > 1) {
+      // Mark as elite
+      eliteMult = 1 + CONFIG.ELITE_HP_BONUS;
+      e.isElite = true;
+      e.color = '#ffdd44'; // gold tint for elites
+    } else {
+      e.isElite = false;
+    }
+
     e.type = type;
-    e.hp = t.hp;
-    e.maxHp = t.hp;
+    e.hp = Math.round(t.hp * waveScale * eliteMult);
+    e.maxHp = e.hp;
     e.radius = t.radius;
-    e.speed = t.speed;
-    e.score = t.score;
-    e.color = t.color;
+    e.speed = t.speed * speedScale * (e.isElite ? (1 + CONFIG.ELITE_SPEED_BONUS) : 1);
+    e.score = Math.round(t.score * scoreScale * (e.isElite ? CONFIG.ELITE_SCORE_BONUS : 1));
+    e.color = e.isElite ? '#ffdd44' : t.color;
     e.x = x != null ? x : rand(20, CONFIG.WIDTH - 20);
     e.y = y != null ? y : -20;
     e.vx = 0; e.vy = t.speed;
@@ -61,15 +76,16 @@ class EnemyManager {
     return e;
   }
 
-  spawnBoss() {
+  spawnBoss(wave) {
     const e = this.pool.acquire();
     if (!e) return;
+    const waveScale = wave ? (1 + CONFIG.WAVE_HP_SCALE * wave) : 1;
     e.type = 'boss';
-    e.hp = CONFIG.BOSS_HP;
-    e.maxHp = CONFIG.BOSS_HP;
+    e.hp = Math.round(CONFIG.BOSS_HP * waveScale);
+    e.maxHp = e.hp;
     e.radius = CONFIG.BOSS_RADIUS;
     e.speed = CONFIG.BOSS_SPEED;
-    e.score = CONFIG.BOSS_SCORE;
+    e.score = Math.round(CONFIG.BOSS_SCORE * (1 + CONFIG.WAVE_SCORE_SCALE * (wave || 1)));
     e.color = '#ff44ff';
     e.x = CONFIG.WIDTH / 2;
     e.y = -40;
@@ -337,7 +353,7 @@ class EnemyManager {
         // Phase 2 also gets aimed volley every other attack
         if (p % 2 === 0) {
           const a = angleTo(e, player);
-          bullets.fireEnemyBullet(e.x, e.y, a + rand(-0.08, 0.08), CONFIG.ENEMY_BULLET_SPEED * 1.3, '#ff4444');
+          bullets.fireEnemyBullet(e.x, e.y, a + rand(-0.08, 0.08), CONFIG.ENEMY_BULLET_SPEED * 1.3, '#ff4444', true);
         }
       }
       e.bossPattern = (e.bossPattern + 1) % patCount;
@@ -349,8 +365,8 @@ class EnemyManager {
       if (e.spiralAngle > e.fireRate * 0.4) {
         e.spiralAngle = 0;
         const a = angleTo(e, player);
-        bullets.fireEnemyBullet(e.x, e.y, a + rand(-0.12, 0.12), CONFIG.ENEMY_BULLET_SPEED * 1.4, '#ff4444');
-        bullets.fireEnemyBullet(e.x, e.y, a + rand(-0.15, 0.15), CONFIG.ENEMY_BULLET_SPEED * 1.3, '#ff4444');
+        bullets.fireEnemyBullet(e.x, e.y, a + rand(-0.12, 0.12), CONFIG.ENEMY_BULLET_SPEED * 1.4, '#ff4444', true);
+        bullets.fireEnemyBullet(e.x, e.y, a + rand(-0.15, 0.15), CONFIG.ENEMY_BULLET_SPEED * 1.3, '#ff4444', true);
       }
     }
   }
@@ -361,7 +377,7 @@ class EnemyManager {
     const count = CONFIG.BOSS_RING_SIZE + randInt(-2, 2);
     for (let i = 0; i < count; i++) {
       const a = (i / count) * Math.PI * 2 + rand(-0.08, 0.08);
-      bullets.fireEnemyBullet(e.x, e.y, a, CONFIG.ENEMY_BULLET_SPEED * 0.6 * speedMul, '#ff44ff');
+      bullets.fireEnemyBullet(e.x, e.y, a, CONFIG.ENEMY_BULLET_SPEED * 0.6 * speedMul, '#ff44ff', true);
     }
   }
 
@@ -371,7 +387,7 @@ class EnemyManager {
     const directions = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
     for (const dir of directions) {
       for (const spd of speeds) {
-        bullets.fireEnemyBullet(e.x, e.y, dir + rand(-0.03, 0.03), CONFIG.ENEMY_BULLET_SPEED * spd, '#ff88aa');
+        bullets.fireEnemyBullet(e.x, e.y, dir + rand(-0.03, 0.03), CONFIG.ENEMY_BULLET_SPEED * spd, '#ff88aa', true);
       }
     }
   }
@@ -383,7 +399,7 @@ class EnemyManager {
     for (let i = 0; i < count; i++) {
       const a = (i / count) * Math.PI * 2;
       const spdOffset = (i % 3) * 10; // alternating speeds
-      bullets.fireEnemyBullet(e.x, e.y, a, baseSpeed + spdOffset, '#88ddff');
+      bullets.fireEnemyBullet(e.x, e.y, a, baseSpeed + spdOffset, '#88ddff', true);
     }
   }
 
@@ -392,7 +408,7 @@ class EnemyManager {
     const count = 8;
     for (let i = 0; i < count; i++) {
       const a = e.spiralAngle + (i / count) * Math.PI * 2;
-      bullets.fireEnemyBullet(e.x, e.y, a, CONFIG.ENEMY_BULLET_SPEED * 0.6, '#ff66aa');
+      bullets.fireEnemyBullet(e.x, e.y, a, CONFIG.ENEMY_BULLET_SPEED * 0.6, '#ff66aa', true);
     }
   }
 
@@ -405,7 +421,7 @@ class EnemyManager {
       const baseAngle = (i / arms) * Math.PI * 2 + e.spiralAngle;
       for (let j = 0; j < perArm; j++) {
         const speed = CONFIG.ENEMY_BULLET_SPEED * (0.25 + j * 0.2);
-        bullets.fireEnemyBullet(e.x, e.y, baseAngle + rand(-0.04, 0.04), speed, '#ff8888');
+        bullets.fireEnemyBullet(e.x, e.y, baseAngle + rand(-0.04, 0.04), speed, '#ff8888', true);
       }
     }
   }
@@ -417,7 +433,7 @@ class EnemyManager {
     const count = 8;
     for (let i = 0; i < count; i++) {
       const a = baseAngle - spread / 2 + (i / (count - 1)) * spread + rand(-0.04, 0.04);
-      bullets.fireEnemyBullet(e.x, e.y, a, CONFIG.ENEMY_BULLET_SPEED * (0.5 + Math.random() * 0.5), '#ff4444');
+      bullets.fireEnemyBullet(e.x, e.y, a, CONFIG.ENEMY_BULLET_SPEED * (0.5 + Math.random() * 0.5), '#ff4444', true);
     }
   }
 

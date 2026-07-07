@@ -13,7 +13,7 @@ function createPlayerBullet() {
 }
 
 function createEnemyBullet() {
-  return { x: 0, y: 0, vx: 0, vy: 0, radius: 4, alive: false, damage: 1, isEnemy: true, color: '#ff6644', isMine: false, mineTimer: 0 };
+  return { x: 0, y: 0, vx: 0, vy: 0, radius: 4, alive: false, damage: 1, isEnemy: true, color: '#ff6644', isMine: false, mineTimer: 0, isBossBullet: false };
 }
 
 class BulletManager {
@@ -54,18 +54,18 @@ class BulletManager {
     return b;
   }
 
-  fireEnemyBullet(x, y, angle, speed, color) {
+  fireEnemyBullet(x, y, angle, speed, color, isBossBullet, damage) {
     const b = this.enemyBullets.acquire();
     if (!b) return;
     b.x = x; b.y = y;
     b.vx = Math.cos(angle) * speed;
     b.vy = Math.sin(angle) * speed;
-    b.damage = 1;
-    b.radius = 4;
+    b.damage = damage || 1;
+    b.radius = isBossBullet ? 5 : 4;
     b.isEnemy = true;
     b.color = color || '#ff6644';
+    b.isBossBullet = !!isBossBullet;
   }
-
   update(dt, enemies) {
     const W = CONFIG.WIDTH, H = CONFIG.HEIGHT;
 
