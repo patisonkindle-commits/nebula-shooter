@@ -353,7 +353,7 @@ class EnemyManager {
         // Phase 2 also gets aimed volley every other attack
         if (p % 2 === 0) {
           const a = angleTo(e, player);
-          bullets.fireEnemyBullet(e.x, e.y, a + rand(-0.08, 0.08), CONFIG.ENEMY_BULLET_SPEED * 1.3, '#ff4444', true);
+          bullets.fireEnemyBullet(e.x, e.y, a + rand(-0.08, 0.08), CONFIG.ENEMY_BULLET_SPEED * 1.3, '#ff4444', true, CONFIG.BOSS_DAMAGE);
         }
       }
       e.bossPattern = (e.bossPattern + 1) % patCount;
@@ -365,8 +365,8 @@ class EnemyManager {
       if (e.spiralAngle > e.fireRate * 0.4) {
         e.spiralAngle = 0;
         const a = angleTo(e, player);
-        bullets.fireEnemyBullet(e.x, e.y, a + rand(-0.12, 0.12), CONFIG.ENEMY_BULLET_SPEED * 1.4, '#ff4444', true);
-        bullets.fireEnemyBullet(e.x, e.y, a + rand(-0.15, 0.15), CONFIG.ENEMY_BULLET_SPEED * 1.3, '#ff4444', true);
+        bullets.fireEnemyBullet(e.x, e.y, a + rand(-0.12, 0.12), CONFIG.ENEMY_BULLET_SPEED * 1.4, '#ff4444', true, CONFIG.BOSS_DAMAGE);
+        bullets.fireEnemyBullet(e.x, e.y, a + rand(-0.15, 0.15), CONFIG.ENEMY_BULLET_SPEED * 1.3, '#ff4444', true, CONFIG.BOSS_DAMAGE);
       }
     }
   }
@@ -377,29 +377,27 @@ class EnemyManager {
     const count = CONFIG.BOSS_RING_SIZE + randInt(-2, 2);
     for (let i = 0; i < count; i++) {
       const a = (i / count) * Math.PI * 2 + rand(-0.08, 0.08);
-      bullets.fireEnemyBullet(e.x, e.y, a, CONFIG.ENEMY_BULLET_SPEED * 0.6 * speedMul, '#ff44ff', true);
+      bullets.fireEnemyBullet(e.x, e.y, a, CONFIG.ENEMY_BULLET_SPEED * 0.6 * speedMul, '#ff44ff', true, CONFIG.BOSS_DAMAGE);
     }
   }
 
   _bossCross(e, bullets) {
-    // 4 cardinal beams — thin spread of bullets along each axis
     const speeds = [0.5, 0.7, 0.9];
     const directions = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
     for (const dir of directions) {
       for (const spd of speeds) {
-        bullets.fireEnemyBullet(e.x, e.y, dir + rand(-0.03, 0.03), CONFIG.ENEMY_BULLET_SPEED * spd, '#ff88aa', true);
+        bullets.fireEnemyBullet(e.x, e.y, dir + rand(-0.03, 0.03), CONFIG.ENEMY_BULLET_SPEED * spd, '#ff88aa', true, CONFIG.BOSS_DAMAGE);
       }
     }
   }
 
   _bossExpandingRing(e, bullets) {
-    // Single ring that spreads outward slower — creates expanding wall
     const count = CONFIG.BOSS_EXPANDING_COUNT;
     const baseSpeed = CONFIG.ENEMY_BULLET_SPEED * 0.35;
     for (let i = 0; i < count; i++) {
       const a = (i / count) * Math.PI * 2;
-      const spdOffset = (i % 3) * 10; // alternating speeds
-      bullets.fireEnemyBullet(e.x, e.y, a, baseSpeed + spdOffset, '#88ddff', true);
+      const spdOffset = (i % 3) * 10;
+      bullets.fireEnemyBullet(e.x, e.y, a, baseSpeed + spdOffset, '#88ddff', true, CONFIG.BOSS_DAMAGE);
     }
   }
 
@@ -408,12 +406,11 @@ class EnemyManager {
     const count = 8;
     for (let i = 0; i < count; i++) {
       const a = e.spiralAngle + (i / count) * Math.PI * 2;
-      bullets.fireEnemyBullet(e.x, e.y, a, CONFIG.ENEMY_BULLET_SPEED * 0.6, '#ff66aa', true);
+      bullets.fireEnemyBullet(e.x, e.y, a, CONFIG.ENEMY_BULLET_SPEED * 0.6, '#ff66aa', true, CONFIG.BOSS_DAMAGE);
     }
   }
 
   _bossStarBurst(e, bullets) {
-    // Radiating arms that rotate slightly each time
     e.spiralAngle += 0.3;
     const arms = CONFIG.BOSS_STAR_ARMS;
     const perArm = 3;
@@ -421,19 +418,18 @@ class EnemyManager {
       const baseAngle = (i / arms) * Math.PI * 2 + e.spiralAngle;
       for (let j = 0; j < perArm; j++) {
         const speed = CONFIG.ENEMY_BULLET_SPEED * (0.25 + j * 0.2);
-        bullets.fireEnemyBullet(e.x, e.y, baseAngle + rand(-0.04, 0.04), speed, '#ff8888', true);
+        bullets.fireEnemyBullet(e.x, e.y, baseAngle + rand(-0.04, 0.04), speed, '#ff8888', true, CONFIG.BOSS_DAMAGE);
       }
     }
   }
 
   _bossSpray(e, player, bullets) {
-    // Aimed cone toward player
     const baseAngle = angleTo(e, player);
     const spread = CONFIG.BOSS_SPRAY_ANGLE;
     const count = 8;
     for (let i = 0; i < count; i++) {
       const a = baseAngle - spread / 2 + (i / (count - 1)) * spread + rand(-0.04, 0.04);
-      bullets.fireEnemyBullet(e.x, e.y, a, CONFIG.ENEMY_BULLET_SPEED * (0.5 + Math.random() * 0.5), '#ff4444', true);
+      bullets.fireEnemyBullet(e.x, e.y, a, CONFIG.ENEMY_BULLET_SPEED * (0.5 + Math.random() * 0.5), '#ff4444', true, CONFIG.BOSS_DAMAGE);
     }
   }
 
