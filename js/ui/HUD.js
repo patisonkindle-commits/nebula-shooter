@@ -46,13 +46,23 @@ class HUD {
       ctx.shadowBlur = 0;
     }
 
+    // ── Mute indicator (far top-right corner) ──
+    ctx.textAlign = 'right';
+    const muted = game.audio.isMuted();
+    ctx.fillStyle = muted ? '#ff4466' : '#44ff88';
+    ctx.shadowColor = muted ? '#ff4466' : '#44ff88';
+    ctx.shadowBlur = muted ? 6 : 4;
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText(muted ? '🔇' : '🔊', CONFIG.WIDTH - 8, 20);
+    ctx.shadowBlur = 0;
+
     // ── Wave badge (glowing) ──
     ctx.textAlign = 'right';
     ctx.shadowColor = '#ffddaa';
     ctx.shadowBlur = 8;
     ctx.fillStyle = '#ffddaa';
     ctx.font = 'bold 11px monospace';
-    ctx.fillText(`✧ WAVE ${game.wave}`, CONFIG.WIDTH - 8, 20);
+    ctx.fillText(`✧ WAVE ${game.wave}`, CONFIG.WIDTH - 36, 20);
     ctx.shadowBlur = 0;
 
     // ── Boss HP bar ──
