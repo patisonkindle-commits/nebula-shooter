@@ -1,0 +1,45 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#050510"/>
+      <stop offset="50%" style="stop-color:#0a0e2a"/>
+      <stop offset="100%" style="stop-color:#050510"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#8ac4ff;stop-opacity:0.15"/>
+      <stop offset="100%" style="stop-color:#8ac4ff;stop-opacity:0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="350" fill="url(#glow)"/>
+
+  <!-- Stars -->
+  <circle cx="100" cy="80" r="1.5" fill="#4466aa" opacity="0.4"/>
+  <circle cx="350" cy="40" r="1" fill="#6688cc" opacity="0.3"/>
+  <circle cx="600" cy="120" r="2" fill="#88aadd" opacity="0.5"/>
+  <circle cx="850" cy="60" r="1.5" fill="#4466aa" opacity="0.3"/>
+  <circle cx="1050" cy="100" r="1" fill="#6688cc" opacity="0.4"/>
+  <circle cx="200" cy="200" r="1" fill="#4466aa" opacity="0.3"/>
+  <circle cx="950" cy="180" r="1.5" fill="#88aadd" opacity="0.4"/>
+  <circle cx="500" cy="250" r="1" fill="#4466aa" opacity="0.3"/>
+  <circle cx="700" cy="50" r="1" fill="#6688cc" opacity="0.35"/>
+  <circle cx="1100" cy="250" r="1" fill="#6688cc" opacity="0.3"/>
+  <circle cx="750" cy="200" r="1" fill="#4466aa" opacity="0.35"/>
+  <circle cx="100" cy="350" r="1" fill="#4466aa" opacity="0.3"/>
+  <circle cx="400" cy="380" r="1.5" fill="#6688cc" opacity="0.3"/>
+
+  <!-- Spaceship -->
+  <g transform="translate(600, 250)">
+    <ellipse cx="0" cy="40" rx="28" ry="35" fill="#4a9eff" opacity="0.1"/>
+    <polygon points="0,-55 -32,28 0,12 32,28" fill="#8ac4ff"/>
+    <polygon points="0,-55 -32,28 0,12 32,28" fill="#b0d8ff" opacity="0.4"/>
+    <polygon points="0,-40 -20,20 0,8 20,20" fill="#cce0ff" opacity="0.3"/>
+    <circle cx="0" cy="-5" r="6" fill="#4a9eff" opacity="0.5"/>
+    <circle cx="0" cy="-5" r="3" fill="#d0e8ff" opacity="0.8"/>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="455" text-anchor="middle" font-family="monospace,sans-serif" font-size="68" font-weight="bold" fill="#8ac4ff" letter-spacing="10">NEBULA</text>
+  <text x="600" y="490" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#556688" letter-spacing="5">SPACE SHOOTER</text>
+  <text x="600" y="540" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#445577" letter-spacing="2">FREE HTML5 BROWSER GAME</text>
+</svg>
