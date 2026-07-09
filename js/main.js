@@ -8,18 +8,21 @@
   function resize() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const ratio = CONFIG.WIDTH / CONFIG.HEIGHT;
 
     canvas.width = CONFIG.WIDTH;
     canvas.height = CONFIG.HEIGHT;
-    canvas.style.position = 'absolute';
+    // Canvas sizing: scale to fit container without overflow
+    const parent = canvas.parentElement;
+    const pw = parent.clientWidth || CONFIG.WIDTH;
+    const ratio = CONFIG.WIDTH / CONFIG.HEIGHT;
 
-    if (vw / vh < ratio) {
-      canvas.style.width = vw + 'px';
-      canvas.style.height = (vw / ratio) + 'px';
+    if (pw / ratio > window.innerHeight - 120) {
+      // Window height is the bottleneck (mobile landscape excluded)
+      canvas.style.width = 'auto';
+      canvas.style.height = Math.min(window.innerHeight - 120, CONFIG.HEIGHT) + 'px';
     } else {
-      canvas.style.height = vh + 'px';
-      canvas.style.width = (vh * ratio) + 'px';
+      canvas.style.width = pw + 'px';
+      canvas.style.height = (pw / ratio) + 'px';
     }
   }
 
