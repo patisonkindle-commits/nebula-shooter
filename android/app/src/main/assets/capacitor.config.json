@@ -1,0 +1,11 @@
+{
+	"appId": "com.patison.nebula",
+	"appName": "Nebula",
+	"webDir": "www",
+	"bundledWebRuntime": false,
+	"server": {
+		"hostname": "localhost",
+		"androidScheme": "https"
+	},
+	"android": {}
+}

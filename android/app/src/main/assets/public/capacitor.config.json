@@ -1,0 +1,19 @@
+{
+  "appId": "com.patison.nebula",
+  "appName": "Nebula",
+  "webDir": "/home/patison/nebula-shooter",
+  "bundledWebRuntime": false,
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "https"
+  },
+  "android": {
+    "buildOptions": {
+      "keystorePath": null,
+      "keystorePassword": null,
+      "keystoreAlias": null,
+      "keystoreAliasPassword": null,
+      "releaseType": null
+    }
+  }
+}

@@ -1,0 +1,34 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#060618"/>
+      <stop offset="100%" style="stop-color:#0a0e2a"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="48" fill="url(#grad)"/>
+
+  <!-- Stars -->
+  <circle cx="40" cy="30" r="1.5" fill="#4466aa" opacity="0.5"/>
+  <circle cx="200" cy="50" r="1.5" fill="#6688cc" opacity="0.5"/>
+  <circle cx="80" cy="200" r="1" fill="#4466aa" opacity="0.4"/>
+  <circle cx="220" cy="180" r="1" fill="#6688cc" opacity="0.4"/>
+
+  <!-- Outer glow -->
+  <circle cx="128" cy="108" r="60" fill="#4a9eff" opacity="0.08"/>
+  <circle cx="128" cy="108" r="40" fill="#8ac4ff" opacity="0.06"/>
+
+  <!-- Ship -->
+  <g transform="translate(128, 130)">
+    <!-- Engine trail -->
+    <ellipse cx="0" cy="22" rx="12" ry="18" fill="#4a9eff" opacity="0.12"/>
+    <!-- Ship body -->
+    <polygon points="0,-50 -30,22 0,10 30,22" fill="#8ac4ff"/>
+    <polygon points="0,-50 -30,22 0,10 30,22" fill="#b0d8ff" opacity="0.4"/>
+    <!-- Cockpit -->
+    <circle cx="0" cy="-5" r="6" fill="#4a9eff" opacity="0.5"/>
+    <circle cx="0" cy="-5" r="3" fill="#d0e8ff" opacity="0.8"/>
+  </g>
+
+  <!-- 'N' text -->
+  <text x="128" y="218" text-anchor="middle" font-family="monospace" font-size="22" font-weight="bold" fill="#8ac4ff" letter-spacing="4">NEBULA</text>
+</svg>

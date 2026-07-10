@@ -1,15 +1,4 @@
-# OS files
+node_modules/
+www/
+android/
 .DS_Store
-Thumbs.db
-*.swp
-*.swo
-*~
-
-# IDE
-.idea/
-.vscode/
-*.sublime-*
-
-# Temp
-*.log
-tmp/

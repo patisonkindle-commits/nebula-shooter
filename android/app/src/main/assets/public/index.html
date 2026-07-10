@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Nebula — Space Shooter</title>
+<link rel="stylesheet" href="style.css">
+<!-- ═══════════════════════════════════════ -->
+<!-- Android (Capacitor) — No AdSense here   -->
+<!-- AdMob will be added via native plugin   -->
+<!-- ═══════════════════════════════════════ -->
+</head>
+<body>
+<div id="page-wrap">
+  <div id="game-area">
+    <div id="container">
+      <canvas id="game"></canvas>
+    </div>
+  </div>
+
+  <div id="footer">
+    <span class="footer-heart">Made with ♥</span>
+  </div>
+</div>
+
+<script>
+  // Capacitor.js loaded by native WebView; stub for dev
+  window.Capacitor = window.Capacitor || { isNative: false };
+</script>
+<script src="js/config.js"></script>
+<script src="js/Pool.js"></script>
+<script src="js/systems/StarField.js"></script>
+<script src="js/Input.js"></script>
+<script src="js/systems/Audio.js"></script>
+<script src="js/systems/MetaProgression.js"></script>
+<script src="js/entities/Player.js"></script>
+<script src="js/entities/Scrap.js"></script>
+<script src="js/entities/Bullet.js"></script>
+<script src="js/entities/Enemy.js"></script>
+<script src="js/entities/Particles.js"></script>
+<script src="js/ui/HUD.js"></script>
+<script src="js/ui/Menu.js"></script>
+<script src="js/ui/UpgradeUI.js"></script>
+<script src="js/ui/ScorePopup.js"></script>
+<script src="js/ui/MetaScreen.js"></script>
+<script src="js/Game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
