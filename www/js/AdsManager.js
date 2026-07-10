@@ -6,7 +6,6 @@ class AdsManager {
     this.bannerShowing = false;
     this.interstitialLoaded = false;
     this.rewardedLoaded = false;
-    this.onRewardedCallback = null;
 
     // ── Ad Unit IDs (จาก AdMob) ──
     this.ADS = {
@@ -27,6 +26,8 @@ class AdsManager {
     }
     try {
       this.admob = Capacitor.Plugins.AdMob;
+      // Init the AdMob SDK
+      await this.admob.initialize();
       this.initialized = true;
       console.log('[Ads] AdMob initialized');
     } catch (e) {
@@ -41,7 +42,7 @@ class AdsManager {
       await this.admob.showBanner({
         adId: this.ADS.banner,
         adSize: 'ADAPTIVE_BANNER',
-        position: 'bottomCenter',
+        position: 'BOTTOM_CENTER',
         isTesting: true,
       });
       this.bannerShowing = true;
@@ -57,7 +58,9 @@ class AdsManager {
       await this.admob.hideBanner();
       this.bannerShowing = false;
       console.log('[Ads] Banner hidden');
-    } catch (e) {}
+    } catch (e) {
+      console.log('[Ads] Banner hide error:', e.message);
+    }
   }
 
   // ══════════════ INTERSTITIAL ══════════════
@@ -92,7 +95,7 @@ class AdsManager {
   async prepareRewarded() {
     if (!this.initialized) return;
     try {
-      await this.admob.prepareRewardedVideoAd({
+      await this.admob.prepareRewardVideoAd({
         adId: this.ADS.rewarded,
         isTesting: true,
       });
@@ -108,21 +111,20 @@ class AdsManager {
       console.log('[Ads] Rewarded not loaded yet');
       return false;
     }
-    this.onRewardedCallback = callback;
     try {
-      const result = await this.admob.showRewardedVideoAd();
-      if (result && result.isRewarded) {
+      const result = await this.admob.showRewardVideoAd();
+      if (result && result.reward) {
         console.log('[Ads] Reward granted!');
-        if (this.onRewardedCallback) this.onRewardedCallback();
+        this.rewardedLoaded = false;
+        if (callback) callback();
+        // Preload next
+        setTimeout(() => this.prepareRewarded(), 1000);
+        return true;
       }
-      this.rewardedLoaded = false;
-      // Preload next
-      setTimeout(() => this.prepareRewarded(), 1000);
-      return true;
     } catch (e) {
       console.log('[Ads] Rewarded error:', e.message);
-      return false;
     }
+    return false;
   }
 
   isRewardedReady() {
