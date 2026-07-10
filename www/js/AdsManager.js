@@ -42,7 +42,7 @@ class AdsManager {
         adId: this.ADS.banner,
         adSize: 'ADAPTIVE_BANNER',
         position: 'bottomCenter',
-        isTesting: false,
+        isTesting: true,
       });
       this.bannerShowing = true;
       console.log('[Ads] Banner shown');
@@ -66,7 +66,7 @@ class AdsManager {
     try {
       await this.admob.prepareInterstitial({
         adId: this.ADS.interstitial,
-        isTesting: false,
+        isTesting: true,
       });
       this.interstitialLoaded = true;
       console.log('[Ads] Interstitial ready');
@@ -94,7 +94,7 @@ class AdsManager {
     try {
       await this.admob.prepareRewardedVideoAd({
         adId: this.ADS.rewarded,
-        isTesting: false,
+        isTesting: true,
       });
       this.rewardedLoaded = true;
       console.log('[Ads] Rewarded ready');
