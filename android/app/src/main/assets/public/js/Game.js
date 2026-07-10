@@ -195,6 +195,15 @@ class Game {
         // Stare at death screen — wait for tap
         if (this.input.justTapped) {
           const p = this.input.getPos();
+
+          // ── Rewarded revive zone (center of screen) ──
+          if (p.y > CONFIG.HEIGHT * 0.65 && p.y < CONFIG.HEIGHT * 0.77) {
+            if (this._tryRewardedRevive()) {
+              this.input.justTapped = false;
+              break;
+            }
+          }
+
           // Check if tap is in UPGRADES button area (bottom of screen)
           if (p.y > CONFIG.HEIGHT * 0.84) {
             this.showMeta();
@@ -969,6 +978,20 @@ class Game {
     ctx.shadowBlur = 4;
     ctx.fillText('◈ UPGRADES ◈', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.88);
     ctx.shadowBlur = 0;
+
+    // ── Rewarded revive button ──
+    if (window.adsManager && window.adsManager.isRewardedReady()) {
+      const pulse = Math.sin(performance.now() * 0.004) * 0.4 + 0.6;
+      ctx.fillStyle = `rgba(0, 200, 255, ${pulse * 0.15})`;
+      ctx.shadowColor = '#00ccff';
+      ctx.shadowBlur = 15 * pulse;
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText('▶ WATCH AD TO REVIVE ◀', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.72);
+      ctx.shadowBlur = 0;
+      ctx.font = '7px monospace';
+      ctx.fillStyle = `rgba(150, 200, 255, ${pulse * 0.6})`;
+      ctx.fillText('(get 50% HP + Shield back)', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.76);
+    }
     ctx.textAlign = 'left';
   }
 
@@ -1083,6 +1106,29 @@ class Game {
 
     // Mega explosion
     this.particles.bossExplosion(this.player.x, this.player.y);
+
+    // ── Show Interstitial ad (Capacitor only) ──
+    if (window.adsManager && window.adsManager.isInterstitialReady()) {
+      window.adsManager.showInterstitial();
+    }
+  }
+
+  // ── Rewarded revive ──
+  _tryRewardedRevive() {
+    if (!window.adsManager || !window.adsManager.isRewardedReady()) return false;
+
+    window.adsManager.showRewarded(() => {
+      // Revive player with 50% HP + full shield
+      this.player.hp = Math.max(1, Math.ceil(this.player.maxHp * 0.5));
+      this.player.shield = this.player.maxShield;
+      this.player.alive = true;
+      this.state = 'playing';
+      this.audio.bgmSetState('playing');
+      this._bgmStarted = true;
+      this._resetJuice();
+      this.announcements.push({ text: '✦ REVIVED ✦', timer: 2, y: CONFIG.HEIGHT * 0.3 });
+    });
+    return true;
   }
 
   _resetJuice() {

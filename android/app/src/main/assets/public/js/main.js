@@ -49,6 +49,18 @@
   game.init();
   game.start();
 
+  // ── Initialize Ads (Capacitor only) ──
+  setTimeout(async () => {
+    await window.adsManager.init();
+    if (window.adsManager.initialized) {
+      // Show banner immediately
+      await window.adsManager.showBanner();
+      // Preload interstitial & rewarded
+      window.adsManager.prepareInterstitial();
+      window.adsManager.prepareRewarded();
+    }
+  }, 1000);
+
   // Debug API
   window.__game = game;
 })();
