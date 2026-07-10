@@ -43,7 +43,7 @@ class AdsManager {
         adId: this.ADS.banner,
         adSize: 'ADAPTIVE_BANNER',
         position: 'BOTTOM_CENTER',
-        isTesting: true,
+        isTesting: false,
       });
       this.bannerShowing = true;
       console.log('[Ads] Banner shown');
@@ -69,7 +69,7 @@ class AdsManager {
     try {
       await this.admob.prepareInterstitial({
         adId: this.ADS.interstitial,
-        isTesting: true,
+        isTesting: false,
       });
       this.interstitialLoaded = true;
       console.log('[Ads] Interstitial ready');
@@ -97,7 +97,7 @@ class AdsManager {
     try {
       await this.admob.prepareRewardVideoAd({
         adId: this.ADS.rewarded,
-        isTesting: true,
+        isTesting: false,
       });
       this.rewardedLoaded = true;
       console.log('[Ads] Rewarded ready');
@@ -113,14 +113,12 @@ class AdsManager {
     }
     try {
       const result = await this.admob.showRewardVideoAd();
-      if (result && result.reward) {
-        console.log('[Ads] Reward granted!');
-        this.rewardedLoaded = false;
-        if (callback) callback();
-        // Preload next
-        setTimeout(() => this.prepareRewarded(), 1000);
-        return true;
-      }
+      console.log('[Ads] Reward! type:', result.type, 'amount:', result.amount);
+      this.rewardedLoaded = false;
+      if (callback) callback();
+      // Preload next
+      setTimeout(() => this.prepareRewarded(), 1000);
+      return true;
     } catch (e) {
       console.log('[Ads] Rewarded error:', e.message);
     }
