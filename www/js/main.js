@@ -11,15 +11,19 @@
 
     canvas.width = CONFIG.WIDTH;
     canvas.height = CONFIG.HEIGHT;
-    // Canvas sizing: scale to fit container without overflow
+    // Canvas sizing: fill screen on mobile, with room for AdMob banner
     const parent = canvas.parentElement;
     const pw = parent.clientWidth || CONFIG.WIDTH;
     const ratio = CONFIG.WIDTH / CONFIG.HEIGHT;
 
-    if (pw / ratio > window.innerHeight - 120) {
-      // Window height is the bottleneck (mobile landscape excluded)
+    // On Android/Capacitor — full screen minus status bar and ad banner
+    const isAndroid = window.Capacitor && window.Capacitor.isNative;
+    const bannerH = isAndroid ? 60 : 0; // AdMob banner height
+    const maxH = vh - 4 - bannerH;       // minimal chrome (status bar + banner)
+
+    if (pw / ratio > maxH) {
       canvas.style.width = 'auto';
-      canvas.style.height = Math.min(window.innerHeight - 120, CONFIG.HEIGHT) + 'px';
+      canvas.style.height = maxH + 'px';
     } else {
       canvas.style.width = pw + 'px';
       canvas.style.height = (pw / ratio) + 'px';
