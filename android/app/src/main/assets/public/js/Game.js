@@ -1,7 +1,11 @@
 // Project Nebula — Main game orchestrator
 class Game {
   _getDPR() {
-    return (window.Capacitor && window.Capacitor.isNative) ? (window.devicePixelRatio || 1) : 1;
+    // pixelScale = canvas buffer width / logical width (set by main.js _resize)
+    // This is the uniform scale from logical coords (400×720) to pixel buffer.
+    // On Android: scale = cssW / CONFIG.WIDTH (1:1 buffer→CSS mapping).
+    // On desktop: scale = 1.
+    return this.canvas._pixelScale || 1;
   }
 
   constructor(canvas, ctx) {

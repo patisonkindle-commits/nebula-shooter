@@ -55,83 +55,74 @@
     });
   }
 
-  // ── Snaps a float to nearest integer pixel for crisp rendering ──
-  function snapPx(v) { return Math.round(v); }
-
-  // ── Core resize logic (called directly + from wrapper) ──
+  // ── Core resize logic ──
   function _resize() {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
     const gameAspect = CONFIG.WIDTH / CONFIG.HEIGHT; // 400/720 ≈ 0.555
 
-    // Helper: update offscreen chroma canvas dimensions + smoothing
-    function syncChromaCanvas(dpr) {
+    // Helper: sync offscreen chroma canvas to current buffer size
+    function syncChromaCanvas() {
       const game = window.__game;
       if (game && game._chromaCanvas) {
-        game._chromaCanvas.width = CONFIG.WIDTH * dpr;
-        game._chromaCanvas.height = CONFIG.HEIGHT * dpr;
+        game._chromaCanvas.width = canvas.width;
+        game._chromaCanvas.height = canvas.height;
         game._chromaCtx.imageSmoothingEnabled = false;
       }
     }
 
     if (isAndroid) {
-      const dpr = window.devicePixelRatio || 1;
-
-      // High-DPI: canvas pixel buffer = logic × dpr
-      canvas.width = CONFIG.WIDTH * dpr;
-      canvas.height = CONFIG.HEIGHT * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.imageSmoothingEnabled = false;
-
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
       const availH = vh - SAFE_TOP;
 
-      // --- STRATEGY: prefer integer scale for pixel-perfect sharpness ---
-      // If integer scale covers ≥ 70% of both axes, use it (crisp pixels)
-      // Otherwise, use fractional fill but snap CSS dimensions to integers
-
-      const maxScaleX = Math.floor(vw / CONFIG.WIDTH);
-      const maxScaleY = Math.floor(availH / CONFIG.HEIGHT);
-      const intScale = Math.max(1, Math.min(maxScaleX, maxScaleY));
-      const intCssW = CONFIG.WIDTH * intScale;
-      const intCssH = CONFIG.HEIGHT * intScale;
-
-      let cssW, cssH, useIntegerScale;
-
-      if (intCssW >= vw * 0.7 && intCssH >= availH * 0.7) {
-        // Integer scale covers well — perfectly sharp
-        cssW = intCssW;
-        cssH = intCssH;
-        useIntegerScale = true;
+      // ── Calculate display size (CSS pixels) maintaining aspect ratio ──
+      let cssW, cssH;
+      if (vw / availH > gameAspect) {
+        // Limited by height
+        cssH = Math.floor(availH);
+        cssW = Math.floor(availH * gameAspect);
       } else {
-        // Fractional fill — snap to integer pixels to avoid sub-pixel blur
-        cssH = availH;
-        cssW = availH * gameAspect;
-        if (cssW > vw) {
-          cssW = vw;
-          cssH = vw / gameAspect;
-        }
-        cssW = Math.floor(cssW);
-        cssH = Math.floor(cssH);
-        useIntegerScale = false;
+        // Limited by width
+        cssW = Math.floor(vw);
+        cssH = Math.floor(vw / gameAspect);
       }
+      // Enforce minimum size
+      cssW = Math.max(cssW, 1);
+      cssH = Math.max(cssH, 1);
 
+      // ── Canvas buffer = EXACTLY CSS display size (1:1 mapping) ──
+      // No DPR multiplication — browser maps 1 buffer pixel → 1 CSS pixel
+      // Scaling from logical coords (CONFIG.WIDTH × CONFIG.HEIGHT) is handled
+      // via setTransform with ctx.imageSmoothingEnabled = false
+      canvas.width = cssW;
+      canvas.height = cssH;
+
+      const scale = cssW / CONFIG.WIDTH;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+
+      // CSS size = buffer size (1:1), so no sub-pixel interpolation occurs
       canvas.style.width = cssW + 'px';
       canvas.style.height = cssH + 'px';
       canvas.style.position = 'absolute';
-      canvas.style.left = snapPx((vw - cssW) / 2) + 'px';
-      canvas.style.top = snapPx(SAFE_TOP + ((availH - cssH) / 2)) + 'px';
+      canvas.style.left = Math.round((vw - cssW) / 2) + 'px';
+      canvas.style.top = Math.round(SAFE_TOP + (availH - cssH) / 2) + 'px';
 
       // Container: fills viewport, bg colour handles letterbox bars
       const container = document.getElementById('container');
-      container.style.position = 'fixed';
-      container.style.top = '0';
-      container.style.left = '0';
-      container.style.width = '100vw';
-      container.style.height = '100vh';
-      container.style.overflow = 'hidden';
-      container.style.background = '#050510';
+      if (container) {
+        container.style.position = 'fixed';
+        container.style.top = '0';
+        container.style.left = '0';
+        container.style.width = '100vw';
+        container.style.height = '100vh';
+        container.style.overflow = 'hidden';
+        container.style.background = '#050510';
+      }
 
-      syncChromaCanvas(dpr);
+      // Store scale so Game.js can use it instead of window DPR
+      canvas._pixelScale = scale;
+
+      syncChromaCanvas();
       return;
     }
 
@@ -143,9 +134,8 @@
 
     const parent = canvas.parentElement;
     const pw = parent.clientWidth || CONFIG.WIDTH;
-    const maxH = vh - 4;
+    const maxH = window.innerHeight - 4;
 
-    // Desktop also snaps to integers
     if (pw / gameAspect > maxH) {
       canvas.style.width = 'auto';
       canvas.style.height = Math.floor(maxH) + 'px';
@@ -157,18 +147,13 @@
     canvas.style.top = '';
     canvas.style.left = '';
 
-    syncChromaCanvas(1);
+    canvas._pixelScale = 1;
+    syncChromaCanvas();
   }
 
-  // ── Wrapped resize: also syncs offscreen chroma canvas ──
+  // ── Wrapped resize ──
   function resize() {
     _resize();
-    const game = window.__game;
-    if (game && game._chromaCanvas) {
-      const dpr = isAndroid ? (window.devicePixelRatio || 1) : 1;
-      game._chromaCanvas.width = CONFIG.WIDTH * dpr;
-      game._chromaCanvas.height = CONFIG.HEIGHT * dpr;
-    }
   }
 
   window.addEventListener('resize', resize);
