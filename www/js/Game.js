@@ -137,7 +137,7 @@ class Game {
   // ─── Update ───
 
   _update(dt) {
-    // Mute toggle — tap top-right corner area in any state
+    // Mute toggle — tap top-right corner area (above wave)
     if (this.input && this.input.justTapped) {
       const p = this.input.getPos();
       if (p.x > CONFIG.WIDTH - 30 && p.y < 25) {
@@ -736,7 +736,7 @@ class Game {
       ctx.fillStyle = isMuted ? 'rgba(85,85,119,0.7)' : 'rgba(170,170,204,0.7)';
       ctx.shadowColor = isMuted ? 'transparent' : '#4a9eff';
       ctx.shadowBlur = isMuted ? 0 : 6;
-      ctx.fillText(isMuted ? '🔇' : '🔊', CONFIG.WIDTH - 6, 18);
+      ctx.fillText(isMuted ? '🔇' : '🔊', CONFIG.WIDTH - 8, 18);
       ctx.shadowBlur = 0;
       ctx.restore();
       ctx.restore();
@@ -878,17 +878,7 @@ class Game {
       this._applyChromatic(ctx, shakeX, shakeY);
     }
 
-    // Mute toggle — always visible in top-right corner
-    ctx.save();
-    ctx.textAlign = 'right';
-    ctx.font = '14px monospace';
-    const isMuted = this.audio && this.audio.isMuted();
-    ctx.fillStyle = isMuted ? 'rgba(85,85,119,0.7)' : 'rgba(170,170,204,0.7)';
-    ctx.shadowColor = isMuted ? 'transparent' : '#4a9eff';
-    ctx.shadowBlur = isMuted ? 0 : 6;
-    ctx.fillText(isMuted ? '🔇' : '🔊', CONFIG.WIDTH - 6, 18);
-    ctx.shadowBlur = 0;
-    ctx.restore();
+    // Mute indicator is rendered by HUD.js — no duplicate needed
   }
 
   _renderGameOver(ctx) {

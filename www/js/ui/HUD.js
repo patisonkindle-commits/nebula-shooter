@@ -61,8 +61,8 @@ class HUD {
     ctx.fillStyle = muted ? '#ff4466' : '#44ff88';
     ctx.shadowColor = muted ? '#ff4466' : '#44ff88';
     ctx.shadowBlur = muted ? 6 : 4;
-    ctx.font = '9px monospace';
-    ctx.fillText(muted ? '🔇' : '🔊', CONFIG.WIDTH - 8, 14);
+    ctx.font = '13px monospace';
+    ctx.fillText(muted ? '🔇' : '🔊', CONFIG.WIDTH - 8, 12);
     ctx.shadowBlur = 0;
 
     // ── Boss HP bar ──

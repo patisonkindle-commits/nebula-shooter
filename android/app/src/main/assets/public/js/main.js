@@ -53,6 +53,23 @@
     };
   }
 
+  // ── Stop audio when page is hidden / closed ──
+  function handleVisibilityChange() {
+    if (document.hidden) {
+      game.audio.bgmStop();
+    } else {
+      // Resume BGM if we were playing before (state is not 'menu' idle)
+      if (game.state === 'playing' || game.state === 'boss') {
+        game.audio.bgmSetState(game.state);
+      } else if (game.state === 'menu') {
+        game.audio.bgmStart('menu');
+      }
+    }
+  }
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  window.addEventListener('pagehide', () => game.audio.bgmStop());
+  window.addEventListener('beforeunload', () => game.audio.bgmStop());
+
   // Start game
   const game = new Game(canvas, ctx);
   game.init();
