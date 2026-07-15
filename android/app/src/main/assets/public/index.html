@@ -28,6 +28,9 @@
 <script>
   // Capacitor.js loaded by native WebView; stub for dev
   window.Capacitor = window.Capacitor || { isNative: false, Plugins: {} };
+  if (window.Capacitor && window.Capacitor.isNative) {
+    document.body.classList.add('capacitor');
+  }
   </script>
   <script src="js/AdsManager.js"></script>
   <script src="js/config.js"></script>

@@ -11,15 +11,20 @@
 
     canvas.width = CONFIG.WIDTH;
     canvas.height = CONFIG.HEIGHT;
-    // Canvas sizing: fill screen on mobile, with room for AdMob banner
+
+    // On Android/Capacitor — fill full screen (AdMob banner overlays WebView)
+    const isAndroid = window.Capacitor && window.Capacitor.isNative;
+    if (isAndroid) {
+      canvas.style.width = vw + 'px';
+      canvas.style.height = vh + 'px';
+      return;
+    }
+
+    // Desktop: aspect-ratio fit with room for footer
     const parent = canvas.parentElement;
     const pw = parent.clientWidth || CONFIG.WIDTH;
     const ratio = CONFIG.WIDTH / CONFIG.HEIGHT;
-
-    // On Android/Capacitor — full screen minus status bar and ad banner
-    const isAndroid = window.Capacitor && window.Capacitor.isNative;
-    const bannerH = isAndroid ? 60 : 0; // AdMob banner height
-    const maxH = vh - 4 - bannerH;       // minimal chrome (status bar + banner)
+    const maxH = vh - 4;
 
     if (pw / ratio > maxH) {
       canvas.style.width = 'auto';

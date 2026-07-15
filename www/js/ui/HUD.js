@@ -55,14 +55,14 @@ class HUD {
     ctx.fillText(`✧ WAVE ${game.wave}`, CONFIG.WIDTH - 8, 20);
     ctx.shadowBlur = 0;
 
-    // ── Mute indicator (below wave badge, to avoid overlap) ──
+    // ── Mute indicator (top-right, above wave badge) ──
     ctx.textAlign = 'right';
     const muted = game.audio.isMuted();
     ctx.fillStyle = muted ? '#ff4466' : '#44ff88';
     ctx.shadowColor = muted ? '#ff4466' : '#44ff88';
     ctx.shadowBlur = muted ? 6 : 4;
     ctx.font = '9px monospace';
-    ctx.fillText(muted ? '🔇' : '🔊', CONFIG.WIDTH - 8, 30);
+    ctx.fillText(muted ? '🔇' : '🔊', CONFIG.WIDTH - 8, 14);
     ctx.shadowBlur = 0;
 
     // ── Boss HP bar ──
