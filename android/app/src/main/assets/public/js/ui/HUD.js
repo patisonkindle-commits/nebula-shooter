@@ -4,7 +4,7 @@ class HUD {
     // ── Top bar ──
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.beginPath();
-    ctx.roundRect(0, 0, CONFIG.WIDTH, 32, [0, 0, 4, 4]);
+    ctx.roundRect(0, 0, CONFIG.WIDTH, 34, [0, 0, 4, 4]);
     ctx.fill();
 
     // ── HP hearts ──
@@ -51,27 +51,27 @@ class HUD {
     ctx.shadowColor = '#ffddaa';
     ctx.shadowBlur = 8;
     ctx.fillStyle = '#ffddaa';
-    ctx.font = 'bold 11px monospace';
-    ctx.fillText(`✧ WAVE ${game.wave}`, CONFIG.WIDTH - 8, 20);
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(`✧ WAVE ${game.wave}`, CONFIG.WIDTH - 8, 28);
     ctx.shadowBlur = 0;
 
-    // ── Mute indicator (top-left, away from wave badge) ──
-    ctx.textAlign = 'left';
+    // ── Mute indicator (top-right, above wave badge) ──
+    ctx.textAlign = 'right';
     const muted = game.audio.isMuted();
     ctx.fillStyle = muted ? '#ff4466' : '#44ff88';
     ctx.shadowColor = muted ? '#ff4466' : '#44ff88';
     ctx.shadowBlur = muted ? 6 : 4;
-    ctx.font = '13px monospace';
-    ctx.fillText(muted ? '🔇' : '🔊', 8, 18);
+    ctx.font = '14px monospace';
+    ctx.fillText(muted ? '🔇' : '🔊', CONFIG.WIDTH - 8, 12);
     ctx.shadowBlur = 0;
 
     // ── Boss HP bar ──
     if (enemies.bossActive) {
       for (const e of enemies.pool.active) {
         if (e.isBoss && e.alive) {
-          const barY = 34;
+          const barY = 36;
           const barW = CONFIG.WIDTH - 40;
-          const barH = 10;
+          const barH = 12;
           const bx = 20;
 
           // Bar background with glow
@@ -97,11 +97,11 @@ class HUD {
           // Phase indicators
           if (e.bossPhase === 2) {
             ctx.fillStyle = '#ff2222';
-            ctx.font = 'bold 8px monospace';
+            ctx.font = 'bold 9px monospace';
             ctx.textAlign = 'center';
             ctx.shadowColor = '#ff0000';
             ctx.shadowBlur = 8;
-            ctx.fillText('⚠ PHASE 2 ⚠', CONFIG.WIDTH / 2, barY + 9);
+            ctx.fillText('⚠ PHASE 2 ⚠', CONFIG.WIDTH / 2, barY + 10);
             ctx.shadowBlur = 0;
             ctx.textAlign = 'left';
           }
@@ -112,9 +112,9 @@ class HUD {
     }
 
     // ── XP bar (gradient glow) ──
-    const xpY = 34;
+    const xpY = 36;
     const xpW = CONFIG.WIDTH - 16;
-    const xpH = 4;
+    const xpH = 5;
     if (game.level >= 0 && !enemies.bossActive) {
       const pct = Math.min(1, game.xp / game.xpToNext);
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -133,10 +133,10 @@ class HUD {
     }
 
     // ── Bottom stats bar ──
-    const barY = CONFIG.HEIGHT - 22;
+    const barY = CONFIG.HEIGHT - 24;
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.beginPath();
-    ctx.roundRect(0, barY, CONFIG.WIDTH, 22, [4, 4, 0, 0]);
+    ctx.roundRect(0, barY, CONFIG.WIDTH, 24, [4, 4, 0, 0]);
     ctx.fill();
 
     // Scrap with glow
@@ -144,8 +144,8 @@ class HUD {
     ctx.shadowBlur = 5;
     ctx.fillStyle = '#44ff88';
     ctx.textAlign = 'left';
-    ctx.font = '10px monospace';
-    ctx.fillText(`★ ${stats.scrap || 0}`, 8, barY + 15);
+    ctx.font = '11px monospace';
+    ctx.fillText(`★ ${stats.scrap || 0}`, 8, barY + 16);
     ctx.shadowBlur = 0;
 
     // Cores with glow
@@ -153,15 +153,15 @@ class HUD {
     ctx.shadowBlur = 5;
     ctx.fillStyle = '#ff88ff';
     ctx.textAlign = 'center';
-    ctx.font = '10px monospace';
-    ctx.fillText(`◆ ${stats.cores || 0}`, CONFIG.WIDTH / 2, barY + 15);
+    ctx.font = '11px monospace';
+    ctx.fillText(`◆ ${stats.cores || 0}`, CONFIG.WIDTH / 2, barY + 16);
     ctx.shadowBlur = 0;
 
     // Kills
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'right';
-    ctx.font = '10px monospace';
-    ctx.fillText(`☠ ${enemies.kills}`, CONFIG.WIDTH - 8, barY + 15);
+    ctx.font = '11px monospace';
+    ctx.fillText(`☠ ${enemies.kills}`, CONFIG.WIDTH - 8, barY + 16);
 
     // Enemies remaining
     if (enemies && !enemies.bossActive) {
@@ -175,7 +175,7 @@ class HUD {
     // ── Upgrade level indicators ──
     ctx.textAlign = 'left';
     let uiX = 6;
-    let uiY = CONFIG.HEIGHT - 28;
+    let uiY = CONFIG.HEIGHT - 30;
     const activeUpgrades = [];
     if (player.spreadLevel > 0) activeUpgrades.push({ icon: '↕', color: '#ffaa44' });
     if (player.homingLevel > 0) activeUpgrades.push({ icon: '◎', color: '#44ffaa' });
@@ -185,14 +185,14 @@ class HUD {
     if (player.laserActive) activeUpgrades.push({ icon: '⚡', color: '#ff4444' });
     if (player.orbitalLevel > 0) activeUpgrades.push({ icon: '◆', color: '#cc77ff' });
 
-    ctx.font = '7px monospace';
+    ctx.font = '8px monospace';
     for (const ug of activeUpgrades) {
       ctx.fillStyle = ug.color;
       ctx.shadowColor = ug.color;
       ctx.shadowBlur = 3;
       ctx.fillText(ug.icon, uiX, uiY);
       ctx.shadowBlur = 0;
-      uiX += 11;
+      uiX += 12;
     }
 
     ctx.textAlign = 'left';

@@ -13,13 +13,8 @@ html, body {
   top: 0; left: 0; right: 0; bottom: 0;
 }
 
-/* Android/Capacitor: pin container to top-left, disable flex centering, prevent overscroll */
+/* Android/Capacitor: container is positioned by JS (safe-area aware) */
 body.capacitor #container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
   display: block;
   overflow: hidden;
 }
@@ -59,7 +54,10 @@ body.capacitor #container canvas {
 canvas {
   display: block;
   touch-action: none;
-  image-rendering: auto;
+  /* Pixel-art sharpness — no blurry interpolation */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  -ms-interpolation-mode: nearest-neighbor;
 }
 
 /* ── Footer: hidden on mobile, shown on desktop ── */

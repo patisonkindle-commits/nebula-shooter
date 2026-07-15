@@ -1,9 +1,13 @@
 // Project Nebula — Main game orchestrator
 class Game {
+  _getDPR() {
+    return (window.Capacitor && window.Capacitor.isNative) ? (window.devicePixelRatio || 1) : 1;
+  }
+
   constructor(canvas, ctx) {
     this.canvas = canvas;
     this.ctx = ctx;
-    this.state = 'menu'; // menu, playing, upgrade, gameover, meta
+    this.state = 'menu';
     this.running = true;
     this.lastFrame = 0;
 
@@ -36,7 +40,7 @@ class Game {
     this.transitionTimer = 0;
     this.coreDropBonus = 0;
     this.spawnInterval = CONFIG.SPAWN_INTERVAL;
-    this._tier2Unlocked = false; // Burst/Ricochet/Wave unlocked after first boss
+    this._tier2Unlocked = false;
 
     // Run stats
     this.stats = {
@@ -53,7 +57,7 @@ class Game {
     // Juice effects
     this.screenShake = 0;
 
-    // BGM flag — audio context is created on first interaction (in gesture)
+    // BGM flag
     this._bgmStarted = false;
     this.chromaticIntensity = 0;
     this.screenFlash = 0;
@@ -72,11 +76,13 @@ class Game {
     this.score = 0;
     this.announcements = [];
 
-    // Chromatic aberration offscreen canvas
+    // Chromatic aberration offscreen canvas — match pixel resolution
+    const dpr = this._getDPR();
     this._chromaCanvas = document.createElement('canvas');
-    this._chromaCanvas.width = CONFIG.WIDTH;
-    this._chromaCanvas.height = CONFIG.HEIGHT;
+    this._chromaCanvas.width = CONFIG.WIDTH * dpr;
+    this._chromaCanvas.height = CONFIG.HEIGHT * dpr;
     this._chromaCtx = this._chromaCanvas.getContext('2d');
+    this._chromaCtx.imageSmoothingEnabled = false;
 
     // RAF loop
     this._loop = this._loop.bind(this);
@@ -137,10 +143,10 @@ class Game {
   // ─── Update ───
 
   _update(dt) {
-    // Mute toggle — tap top-left corner area in any state
+    // Mute toggle — tap top-right corner area (above wave)
     if (this.input && this.input.justTapped) {
       const p = this.input.getPos();
-      if (p.x < 30 && p.y < 25) {
+      if (p.x > CONFIG.WIDTH - 30 && p.y < 25) {
         this.audio.toggleMute();
         this.input.justTapped = false;
         return;
@@ -730,13 +736,13 @@ class Game {
       }
       // Mute toggle on menu/meta
       ctx.save();
-      ctx.textAlign = 'left';
+      ctx.textAlign = 'right';
       ctx.font = '14px monospace';
       const isMuted = this.audio && this.audio.isMuted();
       ctx.fillStyle = isMuted ? 'rgba(85,85,119,0.7)' : 'rgba(170,170,204,0.7)';
       ctx.shadowColor = isMuted ? 'transparent' : '#4a9eff';
       ctx.shadowBlur = isMuted ? 0 : 6;
-      ctx.fillText(isMuted ? '🔇' : '🔊', 8, 18);
+      ctx.fillText(isMuted ? '🔇' : '🔊', CONFIG.WIDTH - 8, 18);
       ctx.shadowBlur = 0;
       ctx.restore();
       ctx.restore();
@@ -988,30 +994,38 @@ class Game {
   _applyChromatic(ctx, sx, sy) {
     const shift = Math.min(this.chromaticIntensity * 0.2, 3);
     if (shift < 0.3) return;
+    const dpr = this._getDPR();
 
-    // Capture current frame (exclude shake offset)
-    this._chromaCtx.clearRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+    // Capture current frame onto chromaCanvas at full pixel resolution
+    this._chromaCtx.clearRect(0, 0, this._chromaCanvas.width, this._chromaCanvas.height);
     this._chromaCtx.drawImage(this.canvas, 0, 0);
 
-    // Reset canvas transform
+    // Reset to pixel-space transform for precise per-channel shifting
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Red channels shifted
+    const pixelShift = shift * dpr;
+    const cpw = this._chromaCanvas.width;
+    const cph = this._chromaCanvas.height;
+    const pixelSx = sx * dpr;
+    const pixelSy = sy * dpr;
+
+    // R channel shifted left (in pixel space)
     ctx.globalAlpha = 0.3;
-    ctx.drawImage(this._chromaCanvas, -shift + sx, sy);
+    ctx.drawImage(this._chromaCanvas, -pixelShift + pixelSx, pixelSy, cpw, cph, 0, 0, cpw, cph);
 
-    // Blue channel shifted right
-    ctx.drawImage(this._chromaCanvas, shift + sx, sy);
+    // B channel shifted right
+    ctx.globalAlpha = 0.3;
+    ctx.drawImage(this._chromaCanvas, pixelShift + pixelSx, pixelSy, cpw, cph, 0, 0, cpw, cph);
 
-    // Green base
+    // G channel center (full opacity)
     ctx.globalAlpha = 0.85;
-    ctx.drawImage(this._chromaCanvas, sx, sy);
+    ctx.drawImage(this._chromaCanvas, pixelSx, pixelSy, cpw, cph, 0, 0, cpw, cph);
 
-    if (sx !== 0 || sy !== 0) {
-      ctx.setTransform(1, 0, 0, 1, sx, sy);
-    }
+    // Restore logical transform + ensure nearest-neighbor for next frame
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.globalAlpha = 1;
+    ctx.imageSmoothingEnabled = false;
   }
 
   // ─── Game State Transitions ───
