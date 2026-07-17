@@ -1,4 +1,4 @@
-// Mid-run upgrade selection overlay (3 choices) — redesigned cards with glow
+// Mid-run upgrade selection overlay (3 choices) — redesigned cards with glow, bigger layout
 class UpgradeUI {
   constructor() {
     this.active = false;
@@ -61,24 +61,25 @@ class UpgradeUI {
 
     ctx.textAlign = 'center';
 
-    // Level up title with glow
+    // Level up title with glow — BIGGER
     ctx.shadowColor = '#ffdd44';
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 20;
     ctx.fillStyle = '#ffddaa';
-    ctx.font = 'bold 16px monospace';
-    ctx.fillText('LEVEL UP!', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.15);
+    ctx.font = 'bold 22px monospace';
+    ctx.fillText('LEVEL UP!', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.13);
     ctx.shadowBlur = 0;
 
-    ctx.fillStyle = '#777788';
-    ctx.font = '8px monospace';
-    ctx.fillText('choose an upgrade', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.195);
+    ctx.fillStyle = '#888899';
+    ctx.font = '10px monospace';
+    ctx.fillText('choose an upgrade', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.175);
 
-    const cardW = CONFIG.WIDTH * 0.28;
-    const cardH = 110;
-    const gap = 6;
+    // Bigger cards
+    const cardW = 120;
+    const cardH = 148;
+    const gap = 5;
     const totalW = this.options.length * cardW + (this.options.length - 1) * gap;
     const startX = (CONFIG.WIDTH - totalW) / 2;
-    const cardY = CONFIG.HEIGHT * 0.28;
+    const cardY = CONFIG.HEIGHT * 0.26;
 
     this.options.forEach((opt, i) => {
       const cx = startX + i * (cardW + gap);
@@ -86,76 +87,78 @@ class UpgradeUI {
 
       // Card shadow
       ctx.shadowColor = hovered ? opt.color : 'rgba(0,0,0,0.5)';
-      ctx.shadowBlur = hovered ? 12 : 4;
+      ctx.shadowBlur = hovered ? 16 : 6;
 
       // Card bg gradient
       const bgGrad = ctx.createLinearGradient(cx, cardY, cx, cardY + cardH);
-      bgGrad.addColorStop(0, hovered ? '#191944' : '#0d0d1a');
+      bgGrad.addColorStop(0, hovered ? '#1a1a44' : '#0d0d1a');
       bgGrad.addColorStop(1, hovered ? '#0f0f2a' : '#080810');
       ctx.fillStyle = bgGrad;
       ctx.beginPath();
-      ctx.roundRect(cx, cardY, cardW, cardH, 8);
+      ctx.roundRect(cx, cardY, cardW, cardH, 10);
       ctx.fill();
 
       // Card border
       ctx.shadowBlur = 0;
       ctx.strokeStyle = hovered ? opt.color : '#222244';
-      ctx.lineWidth = hovered ? 2 : 1;
+      ctx.lineWidth = hovered ? 2.5 : 1.5;
       ctx.beginPath();
-      ctx.roundRect(cx, cardY, cardW, cardH, 8);
+      ctx.roundRect(cx, cardY, cardW, cardH, 10);
       ctx.stroke();
 
       // Top accent bar
       ctx.fillStyle = hovered ? opt.color : 'rgba(255,255,255,0.05)';
       ctx.beginPath();
-      ctx.roundRect(cx + 8, cardY + 4, cardW - 16, 3, 2);
+      ctx.roundRect(cx + 8, cardY + 6, cardW - 16, 3, 2);
       ctx.fill();
 
-      // Icon with glow
+      // Icon with glow — BIGGER
       ctx.shadowColor = hovered ? opt.color : 'transparent';
-      ctx.shadowBlur = hovered ? 8 : 0;
+      ctx.shadowBlur = hovered ? 10 : 0;
       ctx.fillStyle = opt.color;
-      ctx.font = '24px monospace';
-      ctx.fillText(opt.icon, cx + cardW / 2, cardY + 38);
+      ctx.font = '32px monospace';
+      ctx.fillText(opt.icon, cx + cardW / 2, cardY + 45);
       ctx.shadowBlur = 0;
 
-      // Name
+      // Name — BIGGER
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 9px monospace';
-      ctx.fillText(opt.name, cx + cardW / 2, cardY + 58);
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText(opt.name, cx + cardW / 2, cardY + 70);
 
-      // Description
-      ctx.fillStyle = '#777788';
-      ctx.font = '7px monospace';
-      ctx.fillText(opt.desc, cx + cardW / 2, cardY + 72);
+      // Description — BIGGER
+      ctx.fillStyle = '#8888aa';
+      ctx.font = '8px monospace';
+      ctx.fillText(opt.desc, cx + cardW / 2, cardY + 90);
 
-      // Ownership badge
+      // Ownership badge — BIGGER
       const isOwned = this.ownedSet && this.ownedSet.has(opt.name.toLowerCase());
       if (isOwned) {
         ctx.fillStyle = 'rgba(68, 255, 136, 0.15)';
         ctx.beginPath();
-        ctx.roundRect(cx + cardW * 0.12, cardY + 80, cardW * 0.76, 14, 4);
+        ctx.roundRect(cx + cardW * 0.1, cardY + 103, cardW * 0.8, 18, 5);
         ctx.fill();
         ctx.fillStyle = '#44ff88';
-        ctx.font = 'bold 7px monospace';
-        ctx.fillText('✓ OWNED', cx + cardW / 2, cardY + 90);
+        ctx.font = 'bold 9px monospace';
+        ctx.fillText('✓ OWNED', cx + cardW / 2, cardY + 116);
       }
 
       // Bottom highlight on hover
       if (hovered) {
         ctx.shadowColor = opt.color;
-        ctx.shadowBlur = 6;
+        ctx.shadowBlur = 8;
         ctx.fillStyle = opt.color;
-        ctx.fillRect(cx + cardW * 0.2, cardY + cardH - 3, cardW * 0.6, 2);
+        ctx.fillRect(cx + cardW * 0.15, cardY + cardH - 3, cardW * 0.7, 3);
         ctx.shadowBlur = 0;
       }
     });
 
-    // Footer tips
+    // Footer tips — BIGGER
+    ctx.fillStyle = '#444466';
+    ctx.font = '8px monospace';
+    ctx.fillText('tap a card to upgrade', CONFIG.WIDTH / 2, CONFIG.HEIGHT - 28);
     ctx.fillStyle = '#333355';
     ctx.font = '7px monospace';
-    ctx.fillText('tap a card to upgrade', CONFIG.WIDTH / 2, CONFIG.HEIGHT - 30);
-    ctx.fillText('game pauses while choosing', CONFIG.WIDTH / 2, CONFIG.HEIGHT - 22);
+    ctx.fillText('game pauses while choosing', CONFIG.WIDTH / 2, CONFIG.HEIGHT - 18);
 
     ctx.textAlign = 'left';
   }
@@ -164,12 +167,12 @@ class UpgradeUI {
     if (!this.active || !input.justTapped) return null;
 
     const p = input.getPos();
-    const cardW = CONFIG.WIDTH * 0.28;
-    const cardH = 110;
-    const gap = 6;
+    const cardW = 120;
+    const cardH = 148;
+    const gap = 5;
     const totalW = this.options.length * cardW + (this.options.length - 1) * gap;
     const startX = (CONFIG.WIDTH - totalW) / 2;
-    const cardY = CONFIG.HEIGHT * 0.28;
+    const cardY = CONFIG.HEIGHT * 0.26;
 
     for (let i = 0; i < this.options.length; i++) {
       const cx = startX + i * (cardW + gap);

@@ -79,7 +79,7 @@ const CONFIG = {
   CORE_COST_BASE: 10,
 
   // Juice — more impactful feel
-  SCREEN_SHAKE_DECAY: 0.85,
+  SCREEN_SHAKE_DECAY: 0.88,
   CHROMATIC_DECAY: 0.88,
   HIT_PAUSE_DURATION: 0.10,
   FLASH_DECAY: 0.92,

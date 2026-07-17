@@ -1,13 +1,5 @@
 // Project Nebula — Main game orchestrator
 class Game {
-  _getDPR() {
-    // pixelScale = canvas buffer width / logical width (set by main.js _resize)
-    // This is the uniform scale from logical coords (400×720) to pixel buffer.
-    // On Android: scale = cssW / CONFIG.WIDTH (1:1 buffer→CSS mapping).
-    // On desktop: scale = 1.
-    return this.canvas._pixelScale || 1;
-  }
-
   constructor(canvas, ctx) {
     this.canvas = canvas;
     this.ctx = ctx;
@@ -80,11 +72,10 @@ class Game {
     this.score = 0;
     this.announcements = [];
 
-    // Chromatic aberration offscreen canvas — match pixel resolution
-    const dpr = this._getDPR();
+    // Chromatic aberration offscreen canvas — same size as main canvas buffer
     this._chromaCanvas = document.createElement('canvas');
-    this._chromaCanvas.width = CONFIG.WIDTH * dpr;
-    this._chromaCanvas.height = CONFIG.HEIGHT * dpr;
+    this._chromaCanvas.width = CONFIG.WIDTH;
+    this._chromaCanvas.height = CONFIG.HEIGHT;
     this._chromaCtx = this._chromaCanvas.getContext('2d');
     this._chromaCtx.imageSmoothingEnabled = false;
 
@@ -354,7 +345,7 @@ class Game {
       this.enemies.spawnBoss(this.wave);
       this.audio.bossWarning();
       this.audio.bgmSetState('boss');
-      this.screenShake = 8;
+      this.screenShake = 4; // reduced from 8 for mobile
       this.screenFlash = 0.20;
     }
   }
@@ -594,15 +585,19 @@ class Game {
       this.particles.emit(this.player.x, this.player.y, 8, {
         speed: 100, color: '#66ccff', size: 3, life: 0.3
       });
+      // Shield hit — light shake (shield absorbed most of the impact)
+      this.screenShake = Math.max(this.screenShake, 4);
+      this.chromaticIntensity = Math.max(this.chromaticIntensity, 2);
     } else {
       this.audio.playerHit();
       this.hitPause = CONFIG.HIT_PAUSE_DURATION;
       this.hitPauseRemaining = CONFIG.HIT_PAUSE_DURATION;
-      this.screenShake = Math.max(this.screenShake, 6);
-      this.chromaticIntensity = Math.max(this.chromaticIntensity, 4);
-      this.screenFlash = 0.1;
-      this.particles.emit(this.player.x, this.player.y, 12, {
-        speed: 150, color: '#ff4444', size: 3, life: 0.4
+      // Strong screen shake on direct hull hit
+      this.screenShake = Math.max(this.screenShake, 6); // reduced from 10
+      this.chromaticIntensity = Math.max(this.chromaticIntensity, 5);
+      this.screenFlash = 0.15;
+      this.particles.emit(this.player.x, this.player.y, 16, {
+        speed: 180, color: '#ff4444', size: 4, life: 0.5
       });
     }
   }
@@ -681,7 +676,7 @@ class Game {
   onBossDefeated(bx, by) {
     this.audio.bgmSetState('playing');
     this.audio.explosion();
-    this.screenShake = 15;
+    this.screenShake = 8; // reduced from 15 for mobile
     this.chromaticIntensity = 8;
     this.screenFlash = 0.4;
     this.particles.bossExplosion(bx, by);
@@ -722,13 +717,18 @@ class Game {
 
   _render() {
     const ctx = this.ctx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // Full clear before every frame — prevents leftover artifacts
+    ctx.clearRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
     ctx.save();
 
     // Screen shake offset — only during gameplay
     let shakeX = 0, shakeY = 0;
     if ((this.state === 'playing' || this.state === 'upgrade' || this.state === 'gameover') && this.screenShake > 0.5) {
-      shakeX = rand(-this.screenShake, this.screenShake);
-      shakeY = rand(-this.screenShake, this.screenShake);
+      // Reduce shake on mobile — logical 400px wide, so ±10px is huge
+      const shakeScale = this.canvas._pixelScale >= 1 ? 1 : 0.5; // halve on Android (CSS scale < 1)
+      shakeX = rand(-this.screenShake * shakeScale, this.screenShake * shakeScale);
+      shakeY = rand(-this.screenShake * shakeScale, this.screenShake * shakeScale);
       ctx.translate(shakeX, shakeY);
     }
 
@@ -998,36 +998,27 @@ class Game {
   _applyChromatic(ctx, sx, sy) {
     const shift = Math.min(this.chromaticIntensity * 0.2, 3);
     if (shift < 0.3) return;
-    const dpr = this._getDPR();
 
-    // Capture current frame onto chromaCanvas at full pixel resolution
-    this._chromaCtx.clearRect(0, 0, this._chromaCanvas.width, this._chromaCanvas.height);
+    // Capture current frame onto chromaCanvas (same logical size as main canvas)
+    this._chromaCtx.clearRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
     this._chromaCtx.drawImage(this.canvas, 0, 0);
 
-    // Reset to pixel-space transform for precise per-channel shifting
+    // Reset to identity for per-channel shifting
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.clearRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
 
-    const pixelShift = shift * dpr;
-    const cpw = this._chromaCanvas.width;
-    const cph = this._chromaCanvas.height;
-    const pixelSx = sx * dpr;
-    const pixelSy = sy * dpr;
-
-    // R channel shifted left (in pixel space)
+    // All draws in logical (400×720) space — no DPR multiplication
     ctx.globalAlpha = 0.3;
-    ctx.drawImage(this._chromaCanvas, -pixelShift + pixelSx, pixelSy, cpw, cph, 0, 0, cpw, cph);
+    ctx.drawImage(this._chromaCanvas, -shift + sx, sy, CONFIG.WIDTH, CONFIG.HEIGHT, 0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
 
-    // B channel shifted right
     ctx.globalAlpha = 0.3;
-    ctx.drawImage(this._chromaCanvas, pixelShift + pixelSx, pixelSy, cpw, cph, 0, 0, cpw, cph);
+    ctx.drawImage(this._chromaCanvas, shift + sx, sy, CONFIG.WIDTH, CONFIG.HEIGHT, 0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
 
-    // G channel center (full opacity)
     ctx.globalAlpha = 0.85;
-    ctx.drawImage(this._chromaCanvas, pixelSx, pixelSy, cpw, cph, 0, 0, cpw, cph);
+    ctx.drawImage(this._chromaCanvas, sx, sy, CONFIG.WIDTH, CONFIG.HEIGHT, 0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
 
-    // Restore logical transform + ensure nearest-neighbor for next frame
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // Restore identity transform for next frame
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
     ctx.imageSmoothingEnabled = false;
   }
@@ -1108,7 +1099,7 @@ class Game {
     this.audio.bgmStop();
     this.audio.gameOver();
     this._bgmStarted = false;
-    this.screenShake = 10;
+    this.screenShake = 6; // reduced from 10 for mobile
     this.chromaticIntensity = 8;
     this.screenFlash = 0.3;
 
@@ -1117,7 +1108,9 @@ class Game {
 
     // ── Show Interstitial ad (Capacitor only) ──
     if (window.adsManager && window.adsManager.isInterstitialReady()) {
-      window.adsManager.showInterstitial();
+      window.adsManager.showInterstitial().catch(function(err) {
+        console.log('[Ads] interstitial fail:', err && err.message);
+      });
     }
   }
 

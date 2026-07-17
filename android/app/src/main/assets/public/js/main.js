@@ -5,8 +5,34 @@
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
 
+  // ── Global error guard (catches uncaught exceptions ← #1 crash fix) ──
+  window.addEventListener('error', function(e) {
+    const errDiv = document.getElementById('errlog');
+    if (errDiv) errDiv.textContent = 'JS: ' + (e.message || e.error || e);
+    console.log('[FATAL]', e.message || e.error || e);
+    e.preventDefault();
+  });
+  window.addEventListener('unhandledrejection', function(e) {
+    const errDiv = document.getElementById('errlog');
+    if (errDiv) errDiv.textContent = 'PROMISE: ' + (e.reason || e);
+    console.log('[FATAL] Unhandled rejection:', e.reason || e);
+    e.preventDefault();
+  });
+
   // ── Detect if running inside Capacitor native WebView ──
-  const isAndroid = window.Capacitor && window.Capacitor.isNative === true;
+  const isAndroid = window.Capacitor && (
+    window.Capacitor.isNative === true ||
+    (window.Capacitor.getPlatform && ['android','ios'].includes(window.Capacitor.getPlatform()))
+  );
+  // If Capacitor native detected, add CSS class for Android layout
+  if (isAndroid) {
+    document.body.classList.add('capacitor');
+  }
+
+  // ── Bottom banner height in CSS pixels (≈ Android dp) ──
+  // AdMob adaptive banner on phones ≈ 50dp; landscape ≈ 32dp.
+  // Reserving this space keeps game canvas visible above the ad.
+  const BANNER_HEIGHT = 50;
 
   // ── Determine the top safe-area inset for notch / status bar ──
   function getSafeAreaInsetTop() {
@@ -47,11 +73,9 @@
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', () => {
       const curTop = window.visualViewport.offsetTop || 0;
-      if (curTop > visualViewportSafeTop) {
-        visualViewportSafeTop = curTop;
-        SAFE_TOP = curTop;
-        resize();
-      }
+      visualViewportSafeTop = curTop;
+      SAFE_TOP = getSafeAreaInsetTop() + curTop;
+      resize();
     });
   }
 
@@ -59,10 +83,10 @@
   function _resize() {
     const gameAspect = CONFIG.WIDTH / CONFIG.HEIGHT; // 400/720 ≈ 0.555
 
-    // Helper: sync offscreen chroma canvas to current buffer size
+    // Helper: resize offscreen chroma canvas to match canvas buffer
     function syncChromaCanvas() {
       const game = window.__game;
-      if (game && game._chromaCanvas) {
+      if (game && game._chromaCanvas && game._chromaCanvas.width !== canvas.width) {
         game._chromaCanvas.width = canvas.width;
         game._chromaCanvas.height = canvas.height;
         game._chromaCtx.imageSmoothingEnabled = false;
@@ -70,44 +94,42 @@
     }
 
     if (isAndroid) {
+      const dpr = window.devicePixelRatio || 1;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const availH = vh - SAFE_TOP;
+      const availH = vh - SAFE_TOP - BANNER_HEIGHT;
 
-      // ── Calculate display size (CSS pixels) maintaining aspect ratio ──
+      // ── CSS display size (device-independent pixels) ──
       let cssW, cssH;
       if (vw / availH > gameAspect) {
-        // Limited by height
         cssH = Math.floor(availH);
         cssW = Math.floor(availH * gameAspect);
       } else {
-        // Limited by width
         cssW = Math.floor(vw);
         cssH = Math.floor(vw / gameAspect);
       }
-      // Enforce minimum size
       cssW = Math.max(cssW, 1);
       cssH = Math.max(cssH, 1);
 
-      // ── Canvas buffer = EXACTLY CSS display size (1:1 mapping) ──
-      // No DPR multiplication — browser maps 1 buffer pixel → 1 CSS pixel
-      // Scaling from logical coords (CONFIG.WIDTH × CONFIG.HEIGHT) is handled
-      // via setTransform with ctx.imageSmoothingEnabled = false
-      canvas.width = cssW;
-      canvas.height = cssH;
-
-      const scale = cssW / CONFIG.WIDTH;
-      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      // ════════════════════════════════════════════════════════════
+      // Canvas buffer = LOGICAL resolution (400×720), NOT CSS size
+      // Pixel-art game uses nearest-neighbour CSS upscale from a
+      // fixed low-res buffer — avoids OOM from huge (css×dpr²)
+      // buffers on high-DPI screens (e.g. 1440×4.5dpr → 6480×11673)
+      // ════════════════════════════════════════════════════════════
+      canvas.width = CONFIG.WIDTH;
+      canvas.height = CONFIG.HEIGHT;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.imageSmoothingEnabled = false;
 
-      // CSS size = buffer size (1:1), so no sub-pixel interpolation occurs
+      // CSS size scales logical → screen (browser handles sharp upscale)
       canvas.style.width = cssW + 'px';
       canvas.style.height = cssH + 'px';
       canvas.style.position = 'absolute';
       canvas.style.left = Math.round((vw - cssW) / 2) + 'px';
       canvas.style.top = Math.round(SAFE_TOP + (availH - cssH) / 2) + 'px';
 
-      // Container: fills viewport, bg colour handles letterbox bars
+      // Container fills viewport
       const container = document.getElementById('container');
       if (container) {
         container.style.position = 'fixed';
@@ -119,8 +141,8 @@
         container.style.background = '#050510';
       }
 
-      // Store scale so Game.js can use it instead of window DPR
-      canvas._pixelScale = scale;
+      // Store uniform scale (CSS px ÷ logical px) for game juice math
+      canvas._pixelScale = cssW / CONFIG.WIDTH;
 
       syncChromaCanvas();
       return;
@@ -176,33 +198,45 @@
 
   // ── Audio lifecycle ──
   function handleVisibilityChange() {
+    const g = window.__game;
+    if (!g || !g.audio) return;
     if (document.hidden) {
-      game.audio.bgmStop();
+      g.audio.bgmStop();
     } else {
-      if (game.state === 'playing' || game.state === 'boss') {
-        game.audio.bgmSetState(game.state);
-      } else if (game.state === 'menu') {
-        game.audio.bgmStart('menu');
+      if (g.state === 'playing' || g.state === 'boss') {
+        g.audio.bgmSetState(g.state);
+      } else if (g.state === 'menu') {
+        g.audio.bgmStart('menu');
       }
     }
   }
   document.addEventListener('visibilitychange', handleVisibilityChange);
-  window.addEventListener('pagehide', () => game.audio.bgmStop());
-  window.addEventListener('beforeunload', () => game.audio.bgmStop());
+  window.addEventListener('pagehide', () => { const g = window.__game; if (g && g.audio) g.audio.bgmStop(); });
+  window.addEventListener('beforeunload', () => { const g = window.__game; if (g && g.audio) g.audio.bgmStop(); });
 
   // Start game
-  const game = new Game(canvas, ctx);
-  game.init();
-  game.start();
+  let game;
+  try {
+    game = new Game(canvas, ctx);
+    game.init();
+    game.start();
+  } catch (e) {
+    console.log('[FATAL] Game init error:', e && e.message);
+  }
 
   // ── Initialize Ads (Capacitor only) ──
-  setTimeout(async () => {
-    await window.adsManager.init();
-    if (window.adsManager.initialized) {
-      await window.adsManager.showBanner();
-      window.adsManager.prepareInterstitial();
-      window.adsManager.prepareRewarded();
-    }
+  setTimeout(() => {
+    window.adsManager.init()
+      .then(() => {
+        if (window.adsManager.initialized) {
+          return window.adsManager.showBanner()
+            .then(() => {
+              window.adsManager.prepareInterstitial();
+              window.adsManager.prepareRewarded();
+            });
+        }
+      })
+      .catch(err => console.log('[Ads] Init chain error:', err));
   }, 1000);
 
   window.__game = game;

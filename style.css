@@ -36,7 +36,8 @@ html, body {
 canvas {
   display: block;
   touch-action: none;
-  image-rendering: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 /* ── Ad wrapper ── */

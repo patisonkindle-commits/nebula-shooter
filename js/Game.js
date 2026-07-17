@@ -1,9 +1,17 @@
 // Project Nebula — Main game orchestrator
 class Game {
+  _getDPR() {
+    // pixelScale = canvas buffer width / logical width (set by main.js _resize)
+    // This is the uniform scale from logical coords (400×720) to pixel buffer.
+    // On Android: scale = cssW / CONFIG.WIDTH (1:1 buffer→CSS mapping).
+    // On desktop: scale = 1.
+    return this.canvas._pixelScale || 1;
+  }
+
   constructor(canvas, ctx) {
     this.canvas = canvas;
     this.ctx = ctx;
-    this.state = 'menu'; // menu, playing, upgrade, gameover, meta
+    this.state = 'menu';
     this.running = true;
     this.lastFrame = 0;
 
@@ -36,7 +44,7 @@ class Game {
     this.transitionTimer = 0;
     this.coreDropBonus = 0;
     this.spawnInterval = CONFIG.SPAWN_INTERVAL;
-    this._tier2Unlocked = false; // Burst/Ricochet/Wave unlocked after first boss
+    this._tier2Unlocked = false;
 
     // Run stats
     this.stats = {
@@ -53,7 +61,7 @@ class Game {
     // Juice effects
     this.screenShake = 0;
 
-    // BGM flag — audio context is created on first interaction (in gesture)
+    // BGM flag
     this._bgmStarted = false;
     this.chromaticIntensity = 0;
     this.screenFlash = 0;
@@ -72,11 +80,13 @@ class Game {
     this.score = 0;
     this.announcements = [];
 
-    // Chromatic aberration offscreen canvas
+    // Chromatic aberration offscreen canvas — match pixel resolution
+    // _pixelScale = logial→canvas-pixels ratio (includes DPR & CSS scale)
     this._chromaCanvas = document.createElement('canvas');
-    this._chromaCanvas.width = CONFIG.WIDTH;
-    this._chromaCanvas.height = CONFIG.HEIGHT;
+    this._chromaCanvas.width = CONFIG.WIDTH * this._getDPR();
+    this._chromaCanvas.height = CONFIG.HEIGHT * this._getDPR();
     this._chromaCtx = this._chromaCanvas.getContext('2d');
+    this._chromaCtx.imageSmoothingEnabled = false;
 
     // RAF loop
     this._loop = this._loop.bind(this);
@@ -137,7 +147,7 @@ class Game {
   // ─── Update ───
 
   _update(dt) {
-    // Mute toggle — tap top-right corner area in any state
+    // Mute toggle — tap top-right corner area (above wave)
     if (this.input && this.input.justTapped) {
       const p = this.input.getPos();
       if (p.x > CONFIG.WIDTH - 30 && p.y < 25) {
@@ -195,6 +205,15 @@ class Game {
         // Stare at death screen — wait for tap
         if (this.input.justTapped) {
           const p = this.input.getPos();
+
+          // ── Rewarded revive zone (center of screen) ──
+          if (p.y > CONFIG.HEIGHT * 0.65 && p.y < CONFIG.HEIGHT * 0.77) {
+            if (this._tryRewardedRevive()) {
+              this.input.justTapped = false;
+              break;
+            }
+          }
+
           // Check if tap is in UPGRADES button area (bottom of screen)
           if (p.y > CONFIG.HEIGHT * 0.84) {
             this.showMeta();
@@ -335,7 +354,7 @@ class Game {
       this.enemies.spawnBoss(this.wave);
       this.audio.bossWarning();
       this.audio.bgmSetState('boss');
-      this.screenShake = 8;
+      this.screenShake = 4; // reduced from 8 for mobile
       this.screenFlash = 0.20;
     }
   }
@@ -575,15 +594,19 @@ class Game {
       this.particles.emit(this.player.x, this.player.y, 8, {
         speed: 100, color: '#66ccff', size: 3, life: 0.3
       });
+      // Shield hit — light shake (shield absorbed most of the impact)
+      this.screenShake = Math.max(this.screenShake, 4);
+      this.chromaticIntensity = Math.max(this.chromaticIntensity, 2);
     } else {
       this.audio.playerHit();
       this.hitPause = CONFIG.HIT_PAUSE_DURATION;
       this.hitPauseRemaining = CONFIG.HIT_PAUSE_DURATION;
-      this.screenShake = Math.max(this.screenShake, 6);
-      this.chromaticIntensity = Math.max(this.chromaticIntensity, 4);
-      this.screenFlash = 0.1;
-      this.particles.emit(this.player.x, this.player.y, 12, {
-        speed: 150, color: '#ff4444', size: 3, life: 0.4
+      // Strong screen shake on direct hull hit
+      this.screenShake = Math.max(this.screenShake, 6); // reduced from 10
+      this.chromaticIntensity = Math.max(this.chromaticIntensity, 5);
+      this.screenFlash = 0.15;
+      this.particles.emit(this.player.x, this.player.y, 16, {
+        speed: 180, color: '#ff4444', size: 4, life: 0.5
       });
     }
   }
@@ -662,7 +685,7 @@ class Game {
   onBossDefeated(bx, by) {
     this.audio.bgmSetState('playing');
     this.audio.explosion();
-    this.screenShake = 15;
+    this.screenShake = 8; // reduced from 15 for mobile
     this.chromaticIntensity = 8;
     this.screenFlash = 0.4;
     this.particles.bossExplosion(bx, by);
@@ -703,13 +726,18 @@ class Game {
 
   _render() {
     const ctx = this.ctx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // Full clear before every frame — prevents leftover artifacts
+    ctx.clearRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
     ctx.save();
 
     // Screen shake offset — only during gameplay
     let shakeX = 0, shakeY = 0;
     if ((this.state === 'playing' || this.state === 'upgrade' || this.state === 'gameover') && this.screenShake > 0.5) {
-      shakeX = rand(-this.screenShake, this.screenShake);
-      shakeY = rand(-this.screenShake, this.screenShake);
+      // Reduce shake on mobile — logical 400px wide, so ±10px is huge
+      const shakeScale = this.canvas._pixelScale >= 1 ? 1 : 0.5; // halve on Android (CSS scale < 1)
+      shakeX = rand(-this.screenShake * shakeScale, this.screenShake * shakeScale);
+      shakeY = rand(-this.screenShake * shakeScale, this.screenShake * shakeScale);
       ctx.translate(shakeX, shakeY);
     }
 
@@ -727,7 +755,7 @@ class Game {
       ctx.fillStyle = isMuted ? 'rgba(85,85,119,0.7)' : 'rgba(170,170,204,0.7)';
       ctx.shadowColor = isMuted ? 'transparent' : '#4a9eff';
       ctx.shadowBlur = isMuted ? 0 : 6;
-      ctx.fillText(isMuted ? '🔇' : '🔊', CONFIG.WIDTH - 6, 18);
+      ctx.fillText(isMuted ? '🔇' : '🔊', CONFIG.WIDTH - 8, 18);
       ctx.shadowBlur = 0;
       ctx.restore();
       ctx.restore();
@@ -869,17 +897,7 @@ class Game {
       this._applyChromatic(ctx, shakeX, shakeY);
     }
 
-    // Mute toggle — always visible in top-right corner
-    ctx.save();
-    ctx.textAlign = 'right';
-    ctx.font = '14px monospace';
-    const isMuted = this.audio && this.audio.isMuted();
-    ctx.fillStyle = isMuted ? 'rgba(85,85,119,0.7)' : 'rgba(170,170,204,0.7)';
-    ctx.shadowColor = isMuted ? 'transparent' : '#4a9eff';
-    ctx.shadowBlur = isMuted ? 0 : 6;
-    ctx.fillText(isMuted ? '🔇' : '🔊', CONFIG.WIDTH - 6, 18);
-    ctx.shadowBlur = 0;
-    ctx.restore();
+    // Mute indicator is rendered by HUD.js — no duplicate needed
   }
 
   _renderGameOver(ctx) {
@@ -969,36 +987,58 @@ class Game {
     ctx.shadowBlur = 4;
     ctx.fillText('◈ UPGRADES ◈', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.88);
     ctx.shadowBlur = 0;
+
+    // ── Rewarded revive button ──
+    if (window.adsManager && window.adsManager.isRewardedReady()) {
+      const pulse = Math.sin(performance.now() * 0.004) * 0.4 + 0.6;
+      ctx.fillStyle = `rgba(0, 200, 255, ${pulse * 0.15})`;
+      ctx.shadowColor = '#00ccff';
+      ctx.shadowBlur = 15 * pulse;
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText('▶ WATCH AD TO REVIVE ◀', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.72);
+      ctx.shadowBlur = 0;
+      ctx.font = '7px monospace';
+      ctx.fillStyle = `rgba(150, 200, 255, ${pulse * 0.6})`;
+      ctx.fillText('(get 50% HP + Shield back)', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.76);
+    }
     ctx.textAlign = 'left';
   }
 
   _applyChromatic(ctx, sx, sy) {
     const shift = Math.min(this.chromaticIntensity * 0.2, 3);
     if (shift < 0.3) return;
+    const dpr = this._getDPR();
 
-    // Capture current frame (exclude shake offset)
-    this._chromaCtx.clearRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+    // Capture current frame onto chromaCanvas at full pixel resolution
+    this._chromaCtx.clearRect(0, 0, this._chromaCanvas.width, this._chromaCanvas.height);
     this._chromaCtx.drawImage(this.canvas, 0, 0);
 
-    // Reset canvas transform
+    // Reset to pixel-space transform for precise per-channel shifting
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Red channels shifted
+    const pixelShift = shift * dpr;
+    const cpw = this._chromaCanvas.width;
+    const cph = this._chromaCanvas.height;
+    const pixelSx = sx * dpr;
+    const pixelSy = sy * dpr;
+
+    // R channel shifted left (in pixel space)
     ctx.globalAlpha = 0.3;
-    ctx.drawImage(this._chromaCanvas, -shift + sx, sy);
+    ctx.drawImage(this._chromaCanvas, -pixelShift + pixelSx, pixelSy, cpw, cph, 0, 0, cpw, cph);
 
-    // Blue channel shifted right
-    ctx.drawImage(this._chromaCanvas, shift + sx, sy);
+    // B channel shifted right
+    ctx.globalAlpha = 0.3;
+    ctx.drawImage(this._chromaCanvas, pixelShift + pixelSx, pixelSy, cpw, cph, 0, 0, cpw, cph);
 
-    // Green base
+    // G channel center (full opacity)
     ctx.globalAlpha = 0.85;
-    ctx.drawImage(this._chromaCanvas, sx, sy);
+    ctx.drawImage(this._chromaCanvas, pixelSx, pixelSy, cpw, cph, 0, 0, cpw, cph);
 
-    if (sx !== 0 || sy !== 0) {
-      ctx.setTransform(1, 0, 0, 1, sx, sy);
-    }
+    // Restore identity transform (buffer = CONFIG.WIDTH × CONFIG.HEIGHT)
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
+    ctx.imageSmoothingEnabled = false;
   }
 
   // ─── Game State Transitions ───
@@ -1077,12 +1117,37 @@ class Game {
     this.audio.bgmStop();
     this.audio.gameOver();
     this._bgmStarted = false;
-    this.screenShake = 10;
+    this.screenShake = 6; // reduced from 10 for mobile
     this.chromaticIntensity = 8;
     this.screenFlash = 0.3;
 
     // Mega explosion
     this.particles.bossExplosion(this.player.x, this.player.y);
+
+    // ── Show Interstitial ad (Capacitor only) ──
+    if (window.adsManager && window.adsManager.isInterstitialReady()) {
+      window.adsManager.showInterstitial().catch(function(err) {
+        console.log('[Ads] interstitial fail:', err && err.message);
+      });
+    }
+  }
+
+  // ── Rewarded revive ──
+  _tryRewardedRevive() {
+    if (!window.adsManager || !window.adsManager.isRewardedReady()) return false;
+
+    window.adsManager.showRewarded(() => {
+      // Revive player with 50% HP + full shield
+      this.player.hp = Math.max(1, Math.ceil(this.player.maxHp * 0.5));
+      this.player.shield = this.player.maxShield;
+      this.player.alive = true;
+      this.state = 'playing';
+      this.audio.bgmSetState('playing');
+      this._bgmStarted = true;
+      this._resetJuice();
+      this.announcements.push({ text: '✦ REVIVED ✦', timer: 2, y: CONFIG.HEIGHT * 0.3 });
+    });
+    return true;
   }
 
   _resetJuice() {
