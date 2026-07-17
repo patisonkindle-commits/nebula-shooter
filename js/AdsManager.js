@@ -7,16 +7,13 @@ class AdsManager {
     this.interstitialLoaded = false;
     this.rewardedLoaded = false;
 
-    // ── Ad Unit IDs (จาก AdMob) ──
-    // ⚠️ TEMP: Use Google test ad unit IDs (guaranteed to serve on any build).
-    // Before releasing to Play Store, replace with real Ad Unit IDs below
-    // and set this.isTesting = false.
+    // ── Ad Unit IDs (PRODUCTION — ready for Play Store) ──
     this.ADS = {
-      banner: 'ca-app-pub-3940256099942544/6300978111',
-      interstitial: 'ca-app-pub-3940256099942544/1033173712',
-      rewarded: 'ca-app-pub-3940256099942544/5224354917',
+      banner: 'ca-app-pub-5374637740061879/8912551848',
+      interstitial: 'ca-app-pub-5374637740061879/8348645309',
+      rewarded: 'ca-app-pub-5374637740061879/4950163450',
     };
-    this.isTesting = true;
+    this.isTesting = false;
 
     // Check if running inside Capacitor WebView
     this.isCapacitor = typeof Capacitor !== 'undefined' && (
@@ -24,13 +21,13 @@ class AdsManager {
       (Capacitor.getPlatform && ['android','ios'].includes(Capacitor.getPlatform()))
     );
     /*
-    // ── PRODUCTION (uncomment before release) ──
+    // ── TEST ADS (Google test ad unit IDs) ──
     this.ADS = {
-      banner: 'ca-app-pub-5374637740061879/8912551848',
-      interstitial: 'ca-app-pub-5374637740061879/8348645309',
-      rewarded: 'ca-app-pub-5374637740061879/4950163450',
+      banner: 'ca-app-pub-3940256099942544/6300978111',
+      interstitial: 'ca-app-pub-3940256099942544/1033173712',
+      rewarded: 'ca-app-pub-3940256099942544/5224354917',
     };
-    this.isTesting = false;
+    this.isTesting = true;
     */
   }
 

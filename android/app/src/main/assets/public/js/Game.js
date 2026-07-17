@@ -991,18 +991,27 @@ class Game {
     ctx.fillText('◈ UPGRADES ◈', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.88);
     ctx.shadowBlur = 0;
 
-    // ── Rewarded revive button ──
+    // ── Rewarded revive — BIG & BOLD ──
     if (window.adsManager && window.adsManager.isRewardedReady()) {
-      const pulse = Math.sin(performance.now() * 0.004) * 0.4 + 0.6;
-      ctx.fillStyle = `rgba(0, 200, 255, ${pulse * 0.15})`;
-      ctx.shadowColor = '#00ccff';
-      ctx.shadowBlur = 15 * pulse;
-      ctx.font = 'bold 10px monospace';
-      ctx.fillText('▶ WATCH AD TO REVIVE ◀', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.72);
+      const pulse = Math.sin(performance.now() * 0.004) * 0.3 + 0.7;
+      // Outer glow box
+      ctx.shadowColor = '#00eeff';
+      ctx.shadowBlur = 25 * pulse;
+      ctx.fillStyle = `rgba(0, 200, 255, ${pulse * 0.08})`;
+      ctx.fillRect(CONFIG.WIDTH * 0.12, CONFIG.HEIGHT * 0.66, CONFIG.WIDTH * 0.76, CONFIG.HEIGHT * 0.12);
       ctx.shadowBlur = 0;
-      ctx.font = '7px monospace';
-      ctx.fillStyle = `rgba(150, 200, 255, ${pulse * 0.6})`;
+      // Main CTA text
+      ctx.shadowColor = '#00ccff';
+      ctx.shadowBlur = 20 * pulse;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText('▶ WATCH AD TO REVIVE ◀', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.70);
+      ctx.shadowBlur = 0;
+      // Sub-text
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = `rgba(100, 200, 255, ${pulse * 0.8})`;
       ctx.fillText('(get 50% HP + Shield back)', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.76);
+      ctx.shadowBlur = 0;
     }
     ctx.textAlign = 'left';
   }
