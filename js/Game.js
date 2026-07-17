@@ -726,9 +726,12 @@ class Game {
 
   _render() {
     const ctx = this.ctx;
+    // Identity → clear entire buffer (now = CSS display size)
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    // Full clear before every frame — prevents leftover artifacts
-    ctx.clearRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    // Scale to logical coords (400×720) so all game code stays unchanged
+    const scale = this.canvas.width / CONFIG.WIDTH;
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
     ctx.save();
 
     // Screen shake offset — only during gameplay

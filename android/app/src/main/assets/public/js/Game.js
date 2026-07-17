@@ -1,5 +1,13 @@
 // Project Nebula — Main game orchestrator
 class Game {
+  _getDPR() {
+    // pixelScale = canvas buffer width / logical width (set by main.js _resize)
+    // This is the uniform scale from logical coords (400×720) to pixel buffer.
+    // On Android: scale = cssW / CONFIG.WIDTH (1:1 buffer→CSS mapping).
+    // On desktop: scale = 1.
+    return this.canvas._pixelScale || 1;
+  }
+
   constructor(canvas, ctx) {
     this.canvas = canvas;
     this.ctx = ctx;
@@ -72,10 +80,11 @@ class Game {
     this.score = 0;
     this.announcements = [];
 
-    // Chromatic aberration offscreen canvas — same size as main canvas buffer
+    // Chromatic aberration offscreen canvas — match pixel resolution
+    // _pixelScale = logial→canvas-pixels ratio (includes DPR & CSS scale)
     this._chromaCanvas = document.createElement('canvas');
-    this._chromaCanvas.width = CONFIG.WIDTH;
-    this._chromaCanvas.height = CONFIG.HEIGHT;
+    this._chromaCanvas.width = CONFIG.WIDTH * this._getDPR();
+    this._chromaCanvas.height = CONFIG.HEIGHT * this._getDPR();
     this._chromaCtx = this._chromaCanvas.getContext('2d');
     this._chromaCtx.imageSmoothingEnabled = false;
 
@@ -717,9 +726,12 @@ class Game {
 
   _render() {
     const ctx = this.ctx;
+    // Identity → clear entire buffer (now = CSS display size)
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    // Full clear before every frame — prevents leftover artifacts
-    ctx.clearRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    // Scale to logical coords (400×720) so all game code stays unchanged
+    const scale = this.canvas.width / CONFIG.WIDTH;
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
     ctx.save();
 
     // Screen shake offset — only during gameplay
@@ -998,26 +1010,35 @@ class Game {
   _applyChromatic(ctx, sx, sy) {
     const shift = Math.min(this.chromaticIntensity * 0.2, 3);
     if (shift < 0.3) return;
+    const dpr = this._getDPR();
 
-    // Capture current frame onto chromaCanvas (same logical size as main canvas)
-    this._chromaCtx.clearRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+    // Capture current frame onto chromaCanvas at full pixel resolution
+    this._chromaCtx.clearRect(0, 0, this._chromaCanvas.width, this._chromaCanvas.height);
     this._chromaCtx.drawImage(this.canvas, 0, 0);
 
-    // Reset to identity for per-channel shifting
+    // Reset to pixel-space transform for precise per-channel shifting
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // All draws in logical (400×720) space — no DPR multiplication
+    const pixelShift = shift * dpr;
+    const cpw = this._chromaCanvas.width;
+    const cph = this._chromaCanvas.height;
+    const pixelSx = sx * dpr;
+    const pixelSy = sy * dpr;
+
+    // R channel shifted left (in pixel space)
     ctx.globalAlpha = 0.3;
-    ctx.drawImage(this._chromaCanvas, -shift + sx, sy, CONFIG.WIDTH, CONFIG.HEIGHT, 0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+    ctx.drawImage(this._chromaCanvas, -pixelShift + pixelSx, pixelSy, cpw, cph, 0, 0, cpw, cph);
 
+    // B channel shifted right
     ctx.globalAlpha = 0.3;
-    ctx.drawImage(this._chromaCanvas, shift + sx, sy, CONFIG.WIDTH, CONFIG.HEIGHT, 0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+    ctx.drawImage(this._chromaCanvas, pixelShift + pixelSx, pixelSy, cpw, cph, 0, 0, cpw, cph);
 
+    // G channel center (full opacity)
     ctx.globalAlpha = 0.85;
-    ctx.drawImage(this._chromaCanvas, sx, sy, CONFIG.WIDTH, CONFIG.HEIGHT, 0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+    ctx.drawImage(this._chromaCanvas, pixelSx, pixelSy, cpw, cph, 0, 0, cpw, cph);
 
-    // Restore identity transform for next frame
+    // Restore identity transform (buffer = CONFIG.WIDTH × CONFIG.HEIGHT)
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
     ctx.imageSmoothingEnabled = false;

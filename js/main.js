@@ -112,17 +112,16 @@
       cssH = Math.max(cssH, 1);
 
       // ════════════════════════════════════════════════════════════
-      // Canvas buffer = LOGICAL resolution (400×720), NOT CSS size
-      // Pixel-art game uses nearest-neighbour CSS upscale from a
-      // fixed low-res buffer — avoids OOM from huge (css×dpr²)
-      // buffers on high-DPI screens (e.g. 1440×4.5dpr → 6480×11673)
+      // Canvas buffer = CSS display resolution (1:1 buffer↔CSS)
+      // Game draws in logical coords (400×720) via setTransform
+      // No browser-level upscaling = sharp vector + text rendering
       // ════════════════════════════════════════════════════════════
-      canvas.width = CONFIG.WIDTH;
-      canvas.height = CONFIG.HEIGHT;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const scale = cssW / CONFIG.WIDTH;
+      canvas.width = cssW;
+      canvas.height = cssH;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
       ctx.imageSmoothingEnabled = false;
 
-      // CSS size scales logical → screen (browser handles sharp upscale)
       canvas.style.width = cssW + 'px';
       canvas.style.height = cssH + 'px';
       canvas.style.position = 'absolute';
@@ -148,23 +147,30 @@
       return;
     }
 
-    // Desktop
-    canvas.width = CONFIG.WIDTH;
-    canvas.height = CONFIG.HEIGHT;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.imageSmoothingEnabled = false;
-
+    // Desktop — same buffer=CSS-size pattern for consistency
     const parent = canvas.parentElement;
     const pw = parent.clientWidth || CONFIG.WIDTH;
     const maxH = window.innerHeight - 4;
 
+    let cssW2, cssH2;
     if (pw / gameAspect > maxH) {
-      canvas.style.width = 'auto';
-      canvas.style.height = Math.floor(maxH) + 'px';
+      cssH2 = Math.floor(maxH);
+      cssW2 = Math.floor(maxH * gameAspect);
     } else {
-      canvas.style.width = Math.floor(pw) + 'px';
-      canvas.style.height = Math.floor(pw / gameAspect) + 'px';
+      cssW2 = Math.floor(pw);
+      cssH2 = Math.floor(pw / gameAspect);
     }
+    cssW2 = Math.max(cssW2, 1);
+    cssH2 = Math.max(cssH2, 1);
+
+    const scale2 = cssW2 / CONFIG.WIDTH;
+    canvas.width = cssW2;
+    canvas.height = cssH2;
+    ctx.setTransform(scale2, 0, 0, scale2, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+
+    canvas.style.width = cssW2 + 'px';
+    canvas.style.height = cssH2 + 'px';
     canvas.style.position = '';
     canvas.style.top = '';
     canvas.style.left = '';
