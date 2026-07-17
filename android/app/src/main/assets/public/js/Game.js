@@ -3,8 +3,8 @@ class Game {
   _getDPR() {
     // pixelScale = canvas buffer width / logical width (set by main.js _resize)
     // This is the uniform scale from logical coords (400×720) to pixel buffer.
-    // On Android: scale = cssW / CONFIG.WIDTH (1:1 buffer→CSS mapping).
-    // On desktop: scale = 1.
+    // On Android: scale = (cssW × dpr) / CONFIG.WIDTH (buffer=physical pixels).
+    // On desktop: scale = dpr (same logic).
     return this.canvas._pixelScale || 1;
   }
 

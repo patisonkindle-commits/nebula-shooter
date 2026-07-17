@@ -111,14 +111,18 @@
       cssW = Math.max(cssW, 1);
       cssH = Math.max(cssH, 1);
 
-      // ════════════════════════════════════════════════════════════
-      // Canvas buffer = CSS display resolution (1:1 buffer↔CSS)
-      // Game draws in logical coords (400×720) via setTransform
-      // No browser-level upscaling = sharp vector + text rendering
-      // ════════════════════════════════════════════════════════════
-      const scale = cssW / CONFIG.WIDTH;
-      canvas.width = cssW;
-      canvas.height = cssH;
+      // ═══════════════════════════════════════════════════════════════
+      // Canvas buffer = PHYSICAL pixels (CSS × DPR)
+      // On Android this is ~1080×1944 — the exact screen resolution.
+      // Compositor does ZERO upscaling = perfectly sharp pixels.
+      // Game draws in logical coords (400×720) via setTransform.
+      // Canvas CSS size = CSS display size (using -moz-device-pixel-ratio).
+      // ═══════════════════════════════════════════════════════════════
+      const bufW = Math.round(cssW * dpr);
+      const bufH = Math.round(cssH * dpr);
+      const scale = bufW / CONFIG.WIDTH;
+      canvas.width = bufW;
+      canvas.height = bufH;
       ctx.setTransform(scale, 0, 0, scale, 0, 0);
       ctx.imageSmoothingEnabled = false;
 
@@ -140,14 +144,14 @@
         container.style.background = '#050510';
       }
 
-      // Store uniform scale (CSS px ÷ logical px) for game juice math
-      canvas._pixelScale = cssW / CONFIG.WIDTH;
+      // Store uniform scale (buffer px ÷ logical px) for game juice math
+      canvas._pixelScale = scale;
 
       syncChromaCanvas();
       return;
     }
 
-    // Desktop — same buffer=CSS-size pattern for consistency
+    // Desktop — same physical-pixel pattern for consistency
     const parent = canvas.parentElement;
     const pw = parent.clientWidth || CONFIG.WIDTH;
     const maxH = window.innerHeight - 4;
@@ -163,9 +167,12 @@
     cssW2 = Math.max(cssW2, 1);
     cssH2 = Math.max(cssH2, 1);
 
-    const scale2 = cssW2 / CONFIG.WIDTH;
-    canvas.width = cssW2;
-    canvas.height = cssH2;
+    const dpr2 = window.devicePixelRatio || 1;
+    const bufW2 = Math.round(cssW2 * dpr2);
+    const bufH2 = Math.round(cssH2 * dpr2);
+    const scale2 = bufW2 / CONFIG.WIDTH;
+    canvas.width = bufW2;
+    canvas.height = bufH2;
     ctx.setTransform(scale2, 0, 0, scale2, 0, 0);
     ctx.imageSmoothingEnabled = false;
 
@@ -175,7 +182,7 @@
     canvas.style.top = '';
     canvas.style.left = '';
 
-    canvas._pixelScale = 1;
+    canvas._pixelScale = scale2;
     syncChromaCanvas();
   }
 
