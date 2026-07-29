@@ -485,6 +485,7 @@ class Game {
     // Enemy bullets vs player (including mines)
     if (this.player.alive) {
       this.bullets.enemyBullets.updateAll(0, (b) => {
+        if (!b.isEnemy) return;
         const d = dist(b, this.player);
         if (d < this.player.hitboxRadius + b.radius) {
           if (b.isMine) {
