@@ -242,11 +242,9 @@
     window.adsManager.init()
       .then(() => {
         if (window.adsManager.initialized) {
-          return window.adsManager.showBanner()
-            .then(() => {
-              window.adsManager.prepareInterstitial();
-              window.adsManager.prepareRewarded();
-            });
+          window.adsManager.showBanner().catch(e => console.log('[Ads] banner fail:', e));
+          window.adsManager.prepareInterstitial();
+          window.adsManager.prepareRewarded();
         }
       })
       .catch(err => console.log('[Ads] Init chain error:', err));
