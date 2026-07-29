@@ -3,7 +3,7 @@
   'use strict';
 
   const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { willReadFrequently: false });
 
   // ── Global error guard (catches uncaught exceptions ← #1 crash fix) ──
   window.addEventListener('error', function(e) {

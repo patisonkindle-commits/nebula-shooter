@@ -17,6 +17,7 @@ class Game {
 
     // Systems
     this.input = null;
+    this._spatialGrid = new SpatialGrid();
     this.player = new Player();
     this.enemies = new EnemyManager();
     this.bullets = new BulletManager();
@@ -91,7 +92,11 @@ class Game {
     // RAF loop
     this._loop = this._loop.bind(this);
 
-    // Level-up XP tracking
+    // FPS tracking
+    this._fps = 0;
+    this._fpsFrames = 0;
+    this._fpsTime = 0;
+    this._frameCount = 0;
     this.xp = 0;
     this.xpToNext = 20;
     this.level = 0;
@@ -120,6 +125,21 @@ class Game {
       const rawDt = (timestamp - this.lastFrame) / 1000;
       this.lastFrame = timestamp;
       let dt = Math.min(rawDt, 0.05);
+
+      // FPS counter (update every 500ms)
+      this._fpsFrames++;
+      this._fpsTime += rawDt;
+      if (this._fpsTime >= 0.5) {
+        this._fps = Math.round(this._fpsFrames / this._fpsTime);
+        this._fpsFrames = 0;
+        this._fpsTime = 0;
+      }
+
+      // Frame-skip prevention: cap at 120fps effective, skip if > 16ms late
+      if (rawDt > 0.05) {
+        requestAnimationFrame(this._loop);
+        return;
+      }
 
       // Time scale (hit-pause / upgrade slow)
       if (this.hitPauseRemaining > 0) {
@@ -391,11 +411,16 @@ class Game {
   }
 
   _checkCollisions() {
+    // Build spatial grid from active enemies
+    this._spatialGrid.clear();
+    for (const e of this.enemies.pool.active) {
+      if (e.alive) this._spatialGrid.insert(e);
+    }
+
     // Player bullets vs enemies
     this.bullets.playerBullets.updateAll(0, (b) => {
-      // Snapshot enemies before iterating (damageEnemy splices active array)
-      const enemies = [...this.enemies.pool.active];
-      for (const e of enemies) {
+      const near = this._spatialGrid.query(b.x, b.y, 50);
+      for (const e of near) {
         if (!e.alive) continue;
         const d = dist(b, e);
         if (d < e.radius + b.radius) {
@@ -421,7 +446,7 @@ class Game {
               this.bullets.playerBullets.release(b);
               return; // consumed
             }
-            // Continue to next enemy in snapshot
+            // Continue to next enemy in near list
             continue;
           }
 
@@ -430,6 +455,7 @@ class Game {
         }
       }
     });
+
     // Laser beam collision — runs every frame when active
     if (this.player.alive && this.player.laserActive) {
       const p = this.player;
@@ -437,8 +463,8 @@ class Game {
       const cy = p.y - p.radius;
       const beamLength = 500;
       const beamWidth = 16;
-      const enemiesCopy = [...this.enemies.pool.active];
-      for (const e of enemiesCopy) {
+      const near = this._spatialGrid.query(cx, cy, beamLength);
+      for (const e of near) {
         if (!e.alive) continue;
         if (e.y > cy || e.y < cy - beamLength) continue;
         if (Math.abs(e.x - cx) < beamWidth + e.radius) {
@@ -480,9 +506,11 @@ class Game {
       });
     }
 
-    // Enemy body vs player (kamikaze collision)
+    // Enemy body vs player (kamikaze collision) — use spatial grid
     if (this.player.alive) {
-      this.enemies.pool.updateAll(0, (e) => {
+      const near = this._spatialGrid.query(this.player.x, this.player.y, 60);
+      for (const e of near) {
+        if (!e.alive) continue;
         const d = dist(e, this.player);
         if (d < this.player.hitboxRadius + e.radius) {
           const took = this.player.takeDamage(1, this);
@@ -495,7 +523,7 @@ class Game {
             this._onEnemyKilled(e);
           }
         }
-      });
+      }
     }
   }
 
@@ -720,6 +748,10 @@ class Game {
     if (this.wave === CONFIG.BOSS_WAVE) {
       this.enemiesThisWave = Math.floor(this.enemiesThisWave * 1.5);
     }
+
+    // Reset FPS counter on new game for accurate fresh measurement
+    this._fpsFrames = 0;
+    this._fpsTime = 0;
   }
 
   // ─── Render ───

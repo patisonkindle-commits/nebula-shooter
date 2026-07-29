@@ -6,9 +6,14 @@ function createParticle() {
 class ParticleSystem {
   constructor() {
     this.pool = new Pool(createParticle, CONFIG.PARTICLE_POOL_SIZE);
+    this._maxActive = 200; // cap particles per frame to prevent GC spikes
   }
 
   emit(x, y, count, opts = {}) {
+    const activeNow = this.pool.count;
+    const slotsLeft = this._maxActive - activeNow;
+    if (slotsLeft <= 0) return;
+    count = Math.min(count, slotsLeft);
     const {
       speed = 120, color = '#ffffff', size = 3, life = 0.6,
       spread = Math.PI * 2, direction = 0, vary = true,
