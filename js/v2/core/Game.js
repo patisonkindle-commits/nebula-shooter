@@ -12,6 +12,7 @@ import { MenuScreen } from '../ui/Menu.js';
 import { Player } from '../entities/Player.js';
 import { EnemyManager } from '../entities/Enemy.js';
 import { AudioManager } from '../systems/AudioManager.js';
+import { MusicEngine } from '../systems/MusicEngine.js';
 
 class Game {
   constructor(canvas, ctx) {
@@ -29,6 +30,7 @@ class Game {
     this.bloom = new BloomPass();
     this.menuScreen = new MenuScreen();
     this.audio = new AudioManager();
+    this.music = new MusicEngine();
 
     // Entities (Phase 3 wires full update; render wired now for Task 1.2)
     this.player = new Player();
@@ -78,6 +80,10 @@ class Game {
   init() {
     this.input = new Input(this.canvas, () => this._onInteraction());
     this.loop.start(dt => this._update(dt), () => this._render());
+
+    // Wire music engine to audio bus
+    this.music.init(this.audio.getMusicBus());
+    this.music.startMusic();
   }
 
   _onInteraction() {
@@ -121,9 +127,7 @@ class Game {
     switch (this.state) {
       case 'menu':
         this.compositor.update(dt);
-        if (!this._bgmStarted && this.input.isTouching()) {
-          this._bgmStarted = true;
-        }
+        // Music engine handles music — no manual _bgmStarted flag needed
         // Menu button interaction: tap START → play, UPGRADES → meta, CREDITS → noop
         if (this.input.justTapped) {
           const idx = this.menuScreen.getHoveredButton(this.input.touchX, this.input.touchY);
@@ -139,6 +143,7 @@ class Game {
         if (!this._musicActive) {
           this._musicActive = true;
           this.audio.setMusicActive(true);
+          this.music.transition('playing');
         }
         this._updatePlaying(dt);
         break;
@@ -147,6 +152,7 @@ class Game {
         // Phase 3 wires MetaScreen; for now any tap closes back to menu.
         if (this.input.justTapped) {
           this.state = 'menu';
+          this.music.transition('menu');
         }
         break;
 
@@ -154,6 +160,7 @@ class Game {
         if (this.input.justTapped) {
           this.state = 'menu';
           this._resetJuice();
+          this.music.transition('menu');
         }
         break;
     }
