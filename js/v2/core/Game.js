@@ -11,6 +11,7 @@ import { ScreenFX } from '../render/ScreenFX.js';
 import { MenuScreen } from '../ui/Menu.js';
 import { Player } from '../entities/Player.js';
 import { EnemyManager } from '../entities/Enemy.js';
+import { AudioManager } from '../systems/AudioManager.js';
 
 class Game {
   constructor(canvas, ctx) {
@@ -27,7 +28,7 @@ class Game {
     this.compositor = new Compositor();
     this.bloom = new BloomPass();
     this.menuScreen = new MenuScreen();
-    this.audio = null; // AudioManager v2 lands in Phase 2
+    this.audio = new AudioManager();
 
     // Entities (Phase 3 wires full update; render wired now for Task 1.2)
     this.player = new Player();
@@ -80,7 +81,9 @@ class Game {
   }
 
   _onInteraction() {
-    // AudioContext resume hook — AudioManager v2 wires here in Phase 2.
+    // First user gesture → resume AudioContext (iOS/Android rule)
+    this.audio.ensure();
+    this.audio.click();
   }
 
   // ─── State transitions ───
@@ -132,6 +135,11 @@ class Game {
         break;
 
       case 'playing':
+        // Music active during gameplay → duck sfx
+        if (!this._musicActive) {
+          this._musicActive = true;
+          this.audio.setMusicActive(true);
+        }
         this._updatePlaying(dt);
         break;
 
