@@ -6,7 +6,7 @@ import { CONFIG } from './config.js';
 import { rand } from './utils.js';
 import { GameLoop } from './GameLoop.js';
 import { Input } from './Input.js';
-import { StarField } from '../render/StarField.js';
+import { Compositor } from '../render/Compositor.js';
 import { MenuScreen } from '../ui/Menu.js';
 
 class Game {
@@ -21,7 +21,7 @@ class Game {
 
     // Systems (Phase 3 wires full entity stack; menu needs these now)
     this.input = null;
-    this.starField = new StarField();
+    this.compositor = new Compositor();
     this.menuScreen = new MenuScreen();
     this.audio = null; // AudioManager v2 lands in Phase 2
 
@@ -100,7 +100,7 @@ class Game {
   _update(dt) {
     switch (this.state) {
       case 'menu':
-        this.starField.update(dt);
+        this.compositor.update(dt);
         if (!this._bgmStarted && this.input.isTouching()) {
           this._bgmStarted = true;
         }
@@ -129,7 +129,7 @@ class Game {
 
   _updatePlaying(dt) {
     this.stats.timeSurvived += dt;
-    this.starField.update(dt);
+    this.compositor.update(dt);
     this._decayJuice(dt);
     this._decayJuice = this._decayJuice; // noop guard — real decay in Phase 3
 
@@ -213,8 +213,8 @@ class Game {
       return;
     }
 
-    // Game render path (Phase 1 fills nebula layers, entities, HUD)
-    this.starField.render(ctx);
+    // Game render path — Phase 1 compositor (nebula layers + parallax stars + vignette)
+    this.compositor.render(ctx);
 
     // Placeholder player ship
     const p = this._dummyPlayer();
@@ -234,6 +234,14 @@ class Game {
       ctx.fillStyle = `rgba(255, 255, 255, ${this.screenFlash})`;
       ctx.fillRect(-10, -10, CONFIG.WIDTH + 20, CONFIG.HEIGHT + 20);
     }
+
+    // FPS debug overlay (top-left, subtle)
+    ctx.save();
+    ctx.fillStyle = 'rgba(74, 158, 255, 0.6)';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${this.loop.fps} FPS`, 4, 10);
+    ctx.restore();
 
     ctx.restore();
 
