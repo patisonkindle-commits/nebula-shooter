@@ -167,6 +167,8 @@ class Game {
         }
         break;
     }
+    // Clear one-shot input flag after this frame (idempotent — no-op if not tapped)
+    if (this.input) this.input.postFrame();
   }
 
   _updatePlaying(dt) {
