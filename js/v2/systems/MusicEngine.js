@@ -54,7 +54,8 @@ class MusicEngine {
   /** Transition to a new game state (music style changes). */
   transition(newState) {
     if (!this._ready) return;
-    const key = newState === 'playing' ? 'playing' : 'boss';
+    const ST = { menu: 'menu', playing: 'playing', boss: 'boss' };
+    const key = ST[newState] || 'menu';
     if (this._currentPatch === key) return;
     this._stopAll();
     this._startPatch(key);
@@ -90,22 +91,23 @@ class MusicEngine {
     if (!bus) return;
     const ctx = bus.context;
 
-    // Pad: 2 detuned saws through lowpass → bus (continuous, no click)
-    this._masterPatch.gain.value = 1;
-
-    // Store current chord so note-scheduling can reference it
     this._currentChord = CHORDS[stateKey] || CHORDS.menu;
     this._currentArp = ARPS[stateKey] || ARPS.menu;
     this._currentArpState = stateKey === 'boss' ? 'boss' : 'playing';
+
+    // Pad: 2 detuned saws per chord note → lowpass 800Hz → 0.05 gain → bus
+    this._startPads(ctx);
 
     // Schedule first notes immediately
     this._scheduleBassNotes(ctx.currentTime);
     this._scheduleArpNotes(ctx.currentTime);
 
-    // Keep pads going — setTargetAtTime ensures smooth transitions
-    this._masterPatch.gain.setTargetAtTime(0.15, ctx.currentTime, 0.1);
+    // Set pad gain envelope (smooth fade-in)
+    const now = ctx.currentTime;
+    bus.gain.setTargetAtTime(0.15, now, 0.1);
+    bus.gain.setTargetAtTime(0.05 * this._masterPatch.gain.value, now, 0.3);
 
-    // Schedule periodic rescheduling to stay in sync with game loop
+    // Periodic rescheduling to stay in sync with game loop
     if (this._rescheduleTimer) clearTimeout(this._rescheduleTimer);
     this._rescheduleTimer = setInterval(() => {
       if (this._ctx() && this._ctx().currentTime - this._lastNoteAt > 1.0) {
@@ -113,6 +115,46 @@ class MusicEngine {
         this._scheduleArpNotes(this._ctx().currentTime);
       }
     }, 1000);
+  }
+
+  _startPads(ctx) {
+    if (!ctx || !this._currentChord) return;
+    const freqs = this._currentChord.freqs;
+
+    for (let i = 0; i < freqs.length; i += 2) {
+      // Detuned saw pair (±5 cents detune)
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const lp = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+
+      osc1.type = 'sawtooth';
+      osc2.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(freqs[i], ctx.currentTime);
+      osc2.frequency.setValueAtTime(freqs[i + 1] || freqs[i], ctx.currentTime);
+      osc2.detune.setValueAtTime(5, ctx.currentTime); // +5 cents detune
+
+      lp.type = 'lowpass';
+      lp.frequency.value = 800;
+      lp.Q.value = 2;
+
+      g.gain.value = 0.05;
+
+      osc1.connect(lp);
+      osc2.connect(lp);
+      lp.connect(g);
+      g.connect(this._masterPatch);
+
+      osc1.start();
+      osc2.start();
+
+      this._scheduledNodes.push({
+        stop: () => {
+          try { osc1.stop(ctx.currentTime + 0.01); } catch(e) {}
+          try { osc2.stop(ctx.currentTime + 0.01); } catch(e) {}
+        }
+      });
+    }
   }
 
   _stopAll() {
@@ -126,8 +168,7 @@ class MusicEngine {
   _stopAllNodes() {
     for (const node of this._scheduledNodes) {
       try {
-        if (node.stop) node.stop(this._ctx() ? this._ctx().currentTime + 0.01 : 0);
-        else if (node.disconnect) node.disconnect();
+        node.stop();
       } catch (e) { /* already stopped */ }
     }
     this._scheduledNodes = [];
@@ -175,8 +216,7 @@ class MusicEngine {
     osc.start(when);
     osc.stop(when + 0.1);
 
-    const schedId = setTimeout(() => this._removeNode(osc), (when - ctx.currentTime) * 1000 + 200);
-    this._scheduledNodes.push({ stop: () => { clearTimeout(schedId); try { osc.disconnect(); } catch(e){} } });
+    this._pushScheduled(osc, g, (when - ctx.currentTime) * 1000 + 200);
   }
 
   _scheduleArpNotes(startAt) {
@@ -211,17 +251,27 @@ class MusicEngine {
       osc.start(t);
       osc.stop(t + arpDur + 0.05);
 
-      const schedId = setTimeout(() => this._removeNode(osc), (t - ctx.currentTime) * 1000 + arpDur * 1000 + 100);
-      this._scheduledNodes.push({ stop: () => { clearTimeout(schedId); try { osc.disconnect(); } catch(e){} } });
+      this._pushScheduled(osc, g, (t - ctx.currentTime) * 1000 + arpDur * 1000 + 100);
 
       t += arpDur;
     }
   }
 
-  _removeNode(node) {
-    try { node.disconnect(); } catch (e) {}
-    const idx = this._scheduledNodes.findIndex(n => n === node || n.stop === undefined);
-    if (idx >= 0) this._scheduledNodes.splice(idx, 1);
+  /** Register a node pair for cleanup; auto-removes after its scheduled lifetime. */
+  _pushScheduled(osc, g, removeAfterMs) {
+    const entry = {
+      stop: () => {
+        if (entry._done) return;
+        entry._done = true;
+        clearTimeout(entry._timer);
+        try { osc.stop(); } catch (e) {}
+        try { g.disconnect(); } catch (e) {}
+        const i = this._scheduledNodes.indexOf(entry);
+        if (i >= 0) this._scheduledNodes.splice(i, 1);
+      },
+    };
+    entry._timer = setTimeout(() => entry.stop(), removeAfterMs);
+    this._scheduledNodes.push(entry);
   }
 }
 
