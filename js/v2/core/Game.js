@@ -8,6 +8,8 @@ import { GameLoop } from './GameLoop.js';
 import { Input } from './Input.js';
 import { Compositor } from '../render/Compositor.js';
 import { MenuScreen } from '../ui/Menu.js';
+import { Player } from '../entities/Player.js';
+import { EnemyManager } from '../entities/Enemy.js';
 
 class Game {
   constructor(canvas, ctx) {
@@ -24,6 +26,10 @@ class Game {
     this.compositor = new Compositor();
     this.menuScreen = new MenuScreen();
     this.audio = null; // AudioManager v2 lands in Phase 2
+
+    // Entities (Phase 3 wires full update; render wired now for Task 1.2)
+    this.player = new Player();
+    this.enemies = new EnemyManager();
 
     // Run stats
     this.stats = {
@@ -133,18 +139,26 @@ class Game {
     this._decayJuice(dt);
     this._decayJuice = this._decayJuice; // noop guard — real decay in Phase 3
 
-    // Phase 3: player/enemies/bullets/scrap/particles/waves update here.
+    // Player movement: drag (Player.update) + keyboard fallback
+    this.player.update(dt, this.input);
+    if (this.input) this.input.applyKeyboard(this.player, dt);
 
-    // Player movement: pointer drag (Phase 3) + keyboard fallback (already available)
-    if (this.input) this.input.applyKeyboard(this._dummyPlayer(), dt);
-  }
-
-  _dummyPlayer() {
-    // Placeholder player object so keyboard movement works pre-Phase-3.
-    if (!this._dp) {
-      this._dp = { x: CONFIG.WIDTH / 2, y: CONFIG.HEIGHT * 0.7, radius: CONFIG.PLAYER_RADIUS, moveSpeed: CONFIG.PLAYER_SPEED };
+    // Demo spawns for Task 1.2 visual verification (removed in Phase 3)
+    if (!this._demoSpawned) {
+      this._demoSpawned = true;
+      const types = ['swarmer', 'sniper', 'tank', 'kamikaze', 'blocker', 'vortex', 'minelayer', 'warp'];
+      types.forEach((t, i) => {
+        const e = this.enemies.spawn(t, 50 + i * 42, 100, 1);
+        if (e) {
+          e.vortexAngle = i;
+          e.vortexReachedPos = t === 'vortex';
+          e.mineTimer = t === 'minelayer' ? 0.1 : 1;
+          e.warpTeleporting = t === 'warp' ? false : false;
+          if (i === 3) e.isElite = true; // one elite demo
+        }
+      });
     }
-    return this._dp;
+    this.enemies.update(dt, performance.now());
   }
 
   _decayJuice(dt) {
@@ -217,16 +231,13 @@ class Game {
     this.compositor.render(ctx);
 
     // Placeholder player ship
-    const p = this._dummyPlayer();
+    const p = this.player;
     if (this.state === 'playing') {
-      ctx.save();
-      ctx.fillStyle = '#4a9eff';
-      ctx.shadowColor = '#4a9eff';
-      ctx.shadowBlur = 12;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, CONFIG.PLAYER_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      p.render(this.ctx, performance.now());
+    }
+    // Enemies — Task 1.2 vector silhouettes
+    if (this.state === 'playing') {
+      this.enemies.render(this.ctx, performance.now());
     }
 
     // Screen flash
