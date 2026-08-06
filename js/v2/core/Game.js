@@ -3,11 +3,11 @@
 // Phase 0: menu renders starfield + title; gameplay wiring lands in Phase 3.
 
 import { CONFIG } from './config.js';
-import { rand } from './utils.js';
 import { GameLoop } from './GameLoop.js';
 import { Input } from './Input.js';
 import { Compositor } from '../render/Compositor.js';
 import { BloomPass } from '../render/BloomPass.js';
+import { ScreenFX } from '../render/ScreenFX.js';
 import { MenuScreen } from '../ui/Menu.js';
 import { Player } from '../entities/Player.js';
 import { EnemyManager } from '../entities/Enemy.js';
@@ -48,12 +48,8 @@ class Game {
     this.wave = 0;
     this.level = 0;
 
-    // Juice
-    this.screenShake = 0;
-    this.chromaticIntensity = 0;
-    this.screenFlash = 0;
-    this.damageFlash = 0;
-    this.hitPauseRemaining = 0;
+    // Juice — ScreenFX module owns decay, shockwaves, chroma, flash, hit-pause
+    this.effects = new ScreenFX();
 
     // Chromatic aberration offscreen canvas (sized on first render)
     this._chromaCanvas = document.createElement('canvas');
@@ -94,11 +90,12 @@ class Game {
   }
 
   _resetJuice() {
-    this.screenShake = 0;
-    this.chromaticIntensity = 0;
-    this.screenFlash = 0;
-    this.damageFlash = 0;
-    this.hitPauseRemaining = 0;
+    // Fresh ScreenFX clears all juice state
+    this.effects.screenShake = 0;
+    this.effects.chromaticIntensity = 0;
+    this.effects.screenFlash = 0;
+    this.effects.hitPauseRemaining = 0;
+    this.effects.shockwaves.length = 0;
     this.loop.timeScale = 1;
     this.loop.hitPauseRemaining = 0;
   }
@@ -164,14 +161,8 @@ class Game {
   }
 
   _decayJuice(dt) {
-    this.screenShake *= Math.pow(CONFIG.SCREEN_SHAKE_DECAY, dt * 60);
-    if (this.screenShake < 0.5) this.screenShake = 0;
-    this.chromaticIntensity *= Math.pow(CONFIG.CHROMATIC_DECAY, dt * 60);
-    if (this.chromaticIntensity < 0.5) this.chromaticIntensity = 0;
-    this.screenFlash *= Math.pow(CONFIG.FLASH_DECAY, dt * 60);
-    if (this.screenFlash < 0.01) this.screenFlash = 0;
-    this.damageFlash *= 0.92;
-    if (this.damageFlash < 0.01) this.damageFlash = 0;
+    // ScreenFX module handles decay; loop hit-pause is checked in GameLoop.
+    this.effects.update(dt);
   }
 
   // ─── Render ───
@@ -186,13 +177,10 @@ class Game {
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     ctx.save();
 
-    // Screen shake
-    let shakeX = 0, shakeY = 0;
-    if ((this.state === 'playing' || this.state === 'gameover') && this.screenShake > 0.5) {
+    // Screen shake — delegate to ScreenFX
+    if ((this.state === 'playing' || this.state === 'gameover') && this.effects.screenShake > 0.5) {
       const shakeScale = this.canvas._pixelScale >= 1 ? 1 : 0.5;
-      shakeX = rand(-this.screenShake * shakeScale, this.screenShake * shakeScale);
-      shakeY = rand(-this.screenShake * shakeScale, this.screenShake * shakeScale);
-      ctx.translate(shakeX, shakeY);
+      this.effects.applyShake(ctx, shakeScale);
     }
 
     // Menu state: skip bloom, no camera shake
@@ -251,11 +239,11 @@ class Game {
       this.bloom.apply(this.ctx, cw, ch);
     }
 
-    // Screen flash
-    if (this.screenFlash > 0.01) {
-      ctx.fillStyle = `rgba(255, 255, 255, ${this.screenFlash})`;
-      ctx.fillRect(-10, -10, CONFIG.WIDTH + 20, CONFIG.HEIGHT + 20);
-    }
+    // Screen flash — delegate to ScreenFX
+    this.effects.drawFlash(ctx);
+
+    // Shockwave rings (boss death/revive)
+    this.effects.drawShockwaves(ctx);
 
     // FPS debug overlay (top-left, subtle)
     ctx.save();
@@ -268,33 +256,15 @@ class Game {
     ctx.restore();
 
     // Chromatic aberration
-    if (this.chromaticIntensity > 0.5) {
-      this._applyChromatic(ctx, shakeX, shakeY);
+    if (this.effects.chromaticIntensity > 0.5) {
+      const cw = this.canvas.width;
+      const ch = this.canvas.height;
+      if (this._chromaCanvas.width !== cw) {
+        this._chromaCanvas.width = cw;
+        this._chromaCanvas.height = ch;
+      }
+      this.effects.drawChromatic(ctx, this._chromaCanvas, cw, ch);
     }
-  }
-
-  _applyChromatic(ctx, shakeX, shakeY) {
-    const cw = this.canvas.width;
-    const ch = this.canvas.height;
-    const scale = cw / CONFIG.WIDTH;
-    const off = 1.5 * this.chromaticIntensity * scale;
-
-    if (this._chromaCanvas.width !== cw) {
-      this._chromaCanvas.width = cw;
-      this._chromaCanvas.height = ch;
-      this._chromaCtx.imageSmoothingEnabled = false;
-    }
-    const cctx = this._chromaCtx;
-    cctx.setTransform(1, 0, 0, 1, 0, 0);
-    cctx.clearRect(0, 0, cw, ch);
-    cctx.drawImage(this.canvas, 0, 0);
-
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.globalCompositeOperation = 'screen';
-    ctx.drawImage(this.canvas, -off, 0);
-    ctx.drawImage(this.canvas, off, 0);
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.drawImage(this._chromaCanvas, 0, 0);
   }
 
   // ─── FPS accessor (HUD debug) ───
