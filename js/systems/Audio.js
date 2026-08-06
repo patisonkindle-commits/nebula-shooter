@@ -278,6 +278,9 @@ class AudioManager {
 
   bgmStart(state = 'menu') {
     this._ensure();
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
     if (!this.bgm) return;
     this._bgmState = state;
     this.bgm.start(state);

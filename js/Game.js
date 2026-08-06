@@ -228,10 +228,12 @@ class Game {
 
           // ── Rewarded revive zone (center of screen) ──
           if (p.y > CONFIG.HEIGHT * 0.65 && p.y < CONFIG.HEIGHT * 0.77) {
-            if (this._tryRewardedRevive()) {
-              this.input.justTapped = false;
-              break;
-            }
+            this._tryRewardedRevive().then(revived => {
+              if (revived) {
+                this.input.justTapped = false;
+              }
+            });
+            break;
           }
 
           // Check if tap is in UPGRADES button area (bottom of screen)
@@ -337,7 +339,7 @@ class Game {
 
   _updateEnemiesAndBullets(dt) {
     this.enemies.update(dt, this.player, this.bullets, this);
-    this.bullets.update(dt, this.enemies);
+    this.bullets.update(dt, this.player, this.enemies, this);
   }
 
   _updateWaves(dt) {
@@ -1024,8 +1026,8 @@ class Game {
     ctx.fillText('◈ UPGRADES ◈', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.88);
     ctx.shadowBlur = 0;
 
-    // ── Rewarded revive — BIG & BOLD ──
-    if (window.adsManager && window.adsManager.isRewardedReady()) {
+    // ── Rewarded revive — BIG & BOLD (always show button, let showRewarded() handle readiness) ──
+    if (window.adsManager) {
       const pulse = Math.sin(performance.now() * 0.004) * 0.3 + 0.7;
       // Outer glow box
       ctx.shadowColor = '#00eeff';
@@ -1170,18 +1172,25 @@ class Game {
     this.particles.bossExplosion(this.player.x, this.player.y);
 
     // ── Show Interstitial ad (Capacitor only) ──
-    if (window.adsManager && window.adsManager.isInterstitialReady()) {
+    if (window.adsManager && window.adsManager.initialized) {
       window.adsManager.showInterstitial().catch(function(err) {
         console.log('[Ads] interstitial fail:', err && err.message);
+        // Try to prepare then show again
+        window.adsManager.prepareInterstitial();
+        setTimeout(() => {
+          window.adsManager.showInterstitial().catch(e => {
+            console.log('[Ads] interstitial retry fail:', e && e.message);
+          });
+        }, 3000);
       });
     }
   }
 
   // ── Rewarded revive ──
-  _tryRewardedRevive() {
-    if (!window.adsManager || !window.adsManager.isRewardedReady()) return false;
+  async _tryRewardedRevive() {
+    if (!window.adsManager) return false;
 
-    window.adsManager.showRewarded(() => {
+    const ok = await window.adsManager.showRewarded(() => {
       // Revive player with 50% HP + full shield
       this.player.hp = Math.max(1, Math.ceil(this.player.maxHp * 0.5));
       this.player.shield = this.player.maxShield;
@@ -1192,7 +1201,7 @@ class Game {
       this._resetJuice();
       this.announcements.push({ text: '✦ REVIVED ✦', timer: 2, y: CONFIG.HEIGHT * 0.3 });
     });
-    return true;
+    return ok;
   }
 
   _resetJuice() {

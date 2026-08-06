@@ -29,10 +29,9 @@
     document.body.classList.add('capacitor');
   }
 
-  // ── Bottom banner height in CSS pixels (≈ Android dp) ──
-  // AdMob adaptive banner on phones ≈ 50dp; landscape ≈ 32dp.
-  // Reserving this space keeps game canvas visible above the ad.
-  const BANNER_HEIGHT = 50;
+  // ── Bottom banner height in CSS pixels — use env(safe-area) + 80dp fallback
+  // AdMob adaptive banner on phones ≈ 50-80dp; reserve extra for safety.
+  const BANNER_HEIGHT = 80;
 
   // ── Determine the top safe-area inset for notch / status bar ──
   function getSafeAreaInsetTop() {
@@ -140,7 +139,7 @@
         container.style.left = '0';
         container.style.width = '100vw';
         container.style.height = '100vh';
-        container.style.overflow = 'hidden';
+        container.style.overflow = 'visible';
         container.style.background = '#050510';
       }
 
@@ -239,16 +238,30 @@
 
   // ── Initialize Ads (Capacitor only) ──
   setTimeout(() => {
-    window.adsManager.init()
-      .then(() => {
-        if (window.adsManager.initialized) {
-          window.adsManager.showBanner().catch(e => console.log('[Ads] banner fail:', e));
-          window.adsManager.prepareInterstitial();
-          window.adsManager.prepareRewarded();
-        }
-      })
-      .catch(err => console.log('[Ads] Init chain error:', err));
-  }, 1000);
+    console.log('[Ads] === Starting ads setup ===');
+  
+    window.adsManager.init().then(ok => {
+      console.log('[Ads] Init result:', ok);
+      if (!ok) {
+        console.log('[Ads] Init failed — not continuing');
+        return;
+      }
+    
+      console.log('[Ads] === Calling all ads ===');
+      window.adsManager.showBanner().then(() => {
+        console.log('[Ads] Banner shown');
+      }).catch(e => console.log('[Ads] banner error:', e.message));
+  
+      window.adsManager.prepareInterstitial().then(() => {
+        console.log('[Ads] Interstitial prepared');
+      }).catch(e => console.log('[Ads] interstitial error:', e.message));
+  
+      window.adsManager.prepareRewarded().then(() => {
+        console.log('[Ads] Rewarded prepared');
+      }).catch(e => console.log('[Ads] rewarded error:', e.message));
+  
+    }).catch(e => console.log('[Ads] Init error:', e.message));
+  }, 2000);
 
   window.__game = game;
 })();

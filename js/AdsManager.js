@@ -7,7 +7,7 @@ class AdsManager {
     this.interstitialLoaded = false;
     this.rewardedLoaded = false;
 
-    // ── Ad Unit IDs (PRODUCTION — ready for Play Store) ──
+    // ── Ad Unit IDs (PRODUCTION) ──
     this.ADS = {
       banner: 'ca-app-pub-5374637740061879/8912551848',
       interstitial: 'ca-app-pub-5374637740061879/8348645309',
@@ -20,32 +20,52 @@ class AdsManager {
       Capacitor.isNative === true ||
       (Capacitor.getPlatform && ['android','ios'].includes(Capacitor.getPlatform()))
     );
-    /*
-    // ── TEST ADS (Google test ad unit IDs) ──
-    this.ADS = {
-      banner: 'ca-app-pub-3940256099942544/6300978111',
-      interstitial: 'ca-app-pub-3940256099942544/1033173712',
-      rewarded: 'ca-app-pub-3940256099942544/5224354917',
-    };
-    this.isTesting = true;
-    */
   }
 
-  // ── Init ──
-  async init() {
+  // ── Init with retry ──
+  async init(retries = 5) {
     if (!this.isCapacitor) {
       console.log('[Ads] Skipped (not Capacitor)');
-      return;
+      return false;
     }
-    try {
-      this.admob = Capacitor.Plugins.AdMob;
-      // Init the AdMob SDK
-      await this.admob.initialize();
-      this.initialized = true;
-      console.log('[Ads] AdMob initialized');
-    } catch (e) {
-      console.log('[Ads] Init error:', e.message);
+    for (let i = 0; i < retries; i++) {
+      try {
+        this.admob = Capacitor.Plugins.AdMob;
+        await this.admob.initialize();
+        this.initialized = true;
+        console.log('[Ads] AdMob initialized');
+
+        // ── Event listeners for interstitial ──
+        this.admob.addListener('interstitialAdLoaded', () => {
+          this.interstitialLoaded = true;
+          console.log('[Ads] Interstitial loaded event');
+        });
+        this.admob.addListener('interstitialAdFailedToLoad', (err) => {
+          this.interstitialLoaded = false;
+          console.log('[Ads] Interstitial load fail:', JSON.stringify(err));
+          setTimeout(() => this.prepareInterstitial(), 5000);
+        });
+
+        // ── Event listeners for rewarded ──
+        this.admob.addListener('onRewardedVideoAdLoaded', () => {
+          this.rewardedLoaded = true;
+          console.log('[Ads] Rewarded loaded event');
+        });
+        this.admob.addListener('onRewardedVideoAdFailedToLoad', (err) => {
+          this.rewardedLoaded = false;
+          console.log('[Ads] Rewarded load fail:', JSON.stringify(err));
+          setTimeout(() => this.prepareRewarded(), 5000);
+        });
+        return true;
+      } catch (e) {
+        console.log(`[Ads] Init attempt ${i + 1}/${retries} failed:`, e.message);
+        if (i < retries - 1) {
+          await new Promise(r => setTimeout(r, 1500));
+        }
+      }
     }
+    console.log('[Ads] Init failed after', retries, 'attempts');
+    return false;
   }
 
   // ══════════════ BANNER ══════════════
@@ -79,57 +99,87 @@ class AdsManager {
   // ══════════════ INTERSTITIAL ══════════════
   async prepareInterstitial() {
     if (!this.initialized) return;
+    this.interstitialLoaded = false;
     try {
       await this.admob.prepareInterstitial({
         adId: this.ADS.interstitial,
         isTesting: this.isTesting,
       });
-      this.interstitialLoaded = true;
-      console.log('[Ads] Interstitial ready');
+      console.log('[Ads] Interstitial prepared OK');
+      // Retry up to 5s if event doesn't fire
+      setTimeout(() => {
+        if (!this.interstitialLoaded) {
+          console.log('[Ads] No interstitial event after 5s — retrying prepare');
+          this.prepareInterstitial();
+        }
+      }, 5000);
     } catch (e) {
       console.log('[Ads] Interstitial prepare error:', e.message);
+      // Retry after 5s
+      setTimeout(() => this.prepareInterstitial(), 5000);
     }
   }
 
   async showInterstitial() {
-    if (!this.initialized || !this.interstitialLoaded) return;
+    if (!this.initialized) return Promise.reject(new Error('Ads not initialized'));
     try {
       await this.admob.showInterstitial();
       console.log('[Ads] Interstitial shown');
       this.interstitialLoaded = false;
-      // Preload next one immediately
+      // Preload next
       setTimeout(() => this.prepareInterstitial(), 1000);
     } catch (e) {
       console.log('[Ads] Interstitial show error:', e.message);
+      // If not ready, try preparing now
+      if (!this.interstitialLoaded) {
+        this.prepareInterstitial();
+      }
     }
+  }
+
+  isInterstitialReady() {
+    return this.initialized && this.interstitialLoaded;
   }
 
   // ══════════════ REWARDED ══════════════
   async prepareRewarded() {
     if (!this.initialized) return;
+    this.rewardedLoaded = false; // reset until event confirms load
     try {
       await this.admob.prepareRewardVideoAd({
         adId: this.ADS.rewarded,
         isTesting: this.isTesting,
       });
-      this.rewardedLoaded = true;
-      console.log('[Ads] Rewarded ready');
+      console.log('[Ads] Rewarded request sent');
     } catch (e) {
       console.log('[Ads] Rewarded prepare error:', e.message);
+      setTimeout(() => this.prepareRewarded(), 5000);
     }
   }
 
   async showRewarded(callback) {
-    if (!this.initialized || !this.rewardedLoaded) {
-      console.log('[Ads] Rewarded not loaded yet');
+    if (!this.initialized) {
+      console.log('[Ads] Rewarded: not initialized');
       return false;
+    }
+    if (!this.rewardedLoaded) {
+      console.log('[Ads] Rewarded not loaded, trying prepare first');
+      await this.prepareRewarded();
+      // Wait up to 10s for load
+      for (let i = 0; i < 20; i++) {
+        if (this.rewardedLoaded) break;
+        await new Promise(r => setTimeout(r, 500));
+      }
+      if (!this.rewardedLoaded) {
+        console.log('[Ads] Rewarded still not ready after waiting');
+        return false;
+      }
     }
     try {
       const result = await this.admob.showRewardVideoAd();
       console.log('[Ads] Reward! type:', result.type, 'amount:', result.amount);
       this.rewardedLoaded = false;
       if (callback) callback();
-      // Preload next
       setTimeout(() => this.prepareRewarded(), 1000);
       return true;
     } catch (e) {
@@ -140,10 +190,6 @@ class AdsManager {
 
   isRewardedReady() {
     return this.initialized && this.rewardedLoaded;
-  }
-
-  isInterstitialReady() {
-    return this.initialized && this.interstitialLoaded;
   }
 }
 

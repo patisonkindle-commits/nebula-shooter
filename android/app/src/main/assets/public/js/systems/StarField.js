@@ -67,7 +67,7 @@ class StarField {
     }
     ctx.globalAlpha = 1;
 
-    // ── Shooting star layer ──
+    // ── Shooting star ──
     if (Math.sin(this.time * 0.3) > 0.95) {
       const sx = rand(0, CONFIG.WIDTH * 0.6);
       const sy = rand(0, CONFIG.HEIGHT * 0.4);
@@ -90,7 +90,7 @@ class StarField {
       ctx.restore();
     }
 
-    // ── Targeting grid (subtle) ──
+    // ── Targeting grid (subtle) — every other frame ──
     ctx.strokeStyle = 'rgba(74, 158, 255, 0.025)';
     ctx.lineWidth = 0.5;
     const gridSize = 40;

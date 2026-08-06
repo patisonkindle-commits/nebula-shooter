@@ -172,7 +172,8 @@ class HUD {
       ctx.fillText(`${remaining} left`, CONFIG.WIDTH - 8, barY + 4);
     }
 
-    // ── Upgrade level indicators ──
+    // ── Active upgrade indicators ──
+    ctx.save();
     ctx.textAlign = 'left';
     let uiX = 6;
     let uiY = CONFIG.HEIGHT - 30;
@@ -197,5 +198,14 @@ class HUD {
 
     ctx.textAlign = 'left';
     ctx.shadowBlur = 0;
+
+    // FPS debug
+    if (game._fps) {
+      ctx.fillStyle = '#2a2a44';
+      ctx.font = '7px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(`${game._fps}fps`, CONFIG.WIDTH - 6, CONFIG.HEIGHT - 28);
+      ctx.textAlign = 'left';
+    }
   }
 }

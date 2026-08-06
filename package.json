@@ -1,6 +1,6 @@
 {
   "name": "nebula-shooter",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -11,8 +11,8 @@
   "description": "",
   "dependencies": {
     "@capacitor-community/admob": "^7.2.0",
-    "@capacitor/android": "^7.6.7",
+    "@capacitor/android": "^7.6.8",
     "@capacitor/cli": "^7.6.7",
-    "@capacitor/core": "^7.6.7"
+    "@capacitor/core": "^7.6.8"
   }
 }
