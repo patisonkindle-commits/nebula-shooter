@@ -7,6 +7,7 @@ import { rand } from './utils.js';
 import { GameLoop } from './GameLoop.js';
 import { Input } from './Input.js';
 import { Compositor } from '../render/Compositor.js';
+import { BloomPass } from '../render/BloomPass.js';
 import { MenuScreen } from '../ui/Menu.js';
 import { Player } from '../entities/Player.js';
 import { EnemyManager } from '../entities/Enemy.js';
@@ -24,6 +25,7 @@ class Game {
     // Systems (Phase 3 wires full entity stack; menu needs these now)
     this.input = null;
     this.compositor = new Compositor();
+    this.bloom = new BloomPass();
     this.menuScreen = new MenuScreen();
     this.audio = null; // AudioManager v2 lands in Phase 2
 
@@ -193,6 +195,7 @@ class Game {
       ctx.translate(shakeX, shakeY);
     }
 
+    // Menu state: skip bloom, no camera shake
     if (this.state === 'menu' || this.state === 'meta') {
       if (this.state === 'menu') {
         this.menuScreen.render(ctx, null);
@@ -238,6 +241,14 @@ class Game {
     // Enemies — Task 1.2 vector silhouettes
     if (this.state === 'playing') {
       this.enemies.render(this.ctx, performance.now());
+    }
+
+    // Additive bloom pass (only during gameplay, not menu)
+    if (this.bloom && this.bloom.enabled) {
+      const cw = this.canvas.width;
+      const ch = this.canvas.height;
+      this.bloom.capture(this.ctx, cw, ch);
+      this.bloom.apply(this.ctx, cw, ch);
     }
 
     // Screen flash
