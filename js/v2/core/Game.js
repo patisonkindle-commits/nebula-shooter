@@ -13,6 +13,7 @@ import { Player } from '../entities/Player.js';
 import { EnemyManager } from '../entities/Enemy.js';
 import { AudioManager } from '../systems/AudioManager.js';
 import { MusicEngine } from '../systems/MusicEngine.js';
+import { SfxEngine } from '../systems/SfxEngine.js';
 
 class Game {
   constructor(canvas, ctx) {
@@ -31,6 +32,7 @@ class Game {
     this.menuScreen = new MenuScreen();
     this.audio = new AudioManager();
     this.music = new MusicEngine();
+    this.sfx = new SfxEngine(this.audio);
 
     // Entities (Phase 3 wires full update; render wired now for Task 1.2)
     this.player = new Player();
@@ -89,7 +91,7 @@ class Game {
   _onInteraction() {
     // First user gesture → resume AudioContext (iOS/Android rule)
     this.audio.ensure();
-    this.audio.click();
+    this.sfx.click();
   }
 
   // ─── State transitions ───
@@ -104,6 +106,7 @@ class Game {
       bossesKilled: 0, scrap: 0, cores: 0, upgrades: [], restarts: 0,
     };
     this._resetJuice();
+    this.sfx.revive(); // new run: rising revive tone
   }
 
   showMeta() {
@@ -133,7 +136,7 @@ class Game {
           const idx = this.menuScreen.getHoveredButton(this.input.touchX, this.input.touchY);
           const action = this.menuScreen.handleTap(idx, this);
           if (action === 'start') this.startGame();
-          else if (action === 'upgrades') this.showMeta();
+          else if (action === 'upgrades') { this.sfx.click(); this.showMeta(); }
           // credits: Phase 3 modal
         }
         break;
