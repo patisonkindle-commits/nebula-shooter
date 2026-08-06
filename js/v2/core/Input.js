@@ -13,6 +13,10 @@ class Input {
     this.justTapped = false;
     this.hasMouse = false;
     this.activeTouchId = null;
+    // Hover tracking (menu buttons)
+    this.mouseX = CONFIG.WIDTH / 2;
+    this.mouseY = 0;
+    this.mouseInCanvas = false;
     // Keyboard state
     this.keys = new Set();
     this.spaceHeld = false;
@@ -25,7 +29,7 @@ class Input {
     canvas.addEventListener('mousedown', e => this._onMouseDown(e));
     canvas.addEventListener('mousemove', e => this._onMouseMove(e));
     canvas.addEventListener('mouseup', e => this._onMouseUp(e));
-    canvas.addEventListener('mouseleave', () => { if (this.hasMouse) { this.hasMouse = false; this.touching = false; } });
+    canvas.addEventListener('mouseleave', () => { if (this.hasMouse) { this.hasMouse = false; this.touching = false; this.mouseInCanvas = false; } });
 
     // Keyboard (desktop convenience)
     window.addEventListener('keydown', e => this._onKeyDown(e));
@@ -34,9 +38,13 @@ class Input {
 
   _clientPos(e) {
     const rect = this.canvas.getBoundingClientRect();
+    // CSS fraction → buffer pixel → CONFIG logical space.
+    // Buffer is scaled to CONFIG by bufW/CONFIG.WIDTH, so reverse it.
+    const fx = (e.clientX - rect.left) / rect.width;
+    const fy = (e.clientY - rect.top) / rect.height;
     return {
-      x: (e.clientX - rect.left) * (CONFIG.WIDTH / rect.width),
-      y: (e.clientY - rect.top) * (CONFIG.HEIGHT / rect.height),
+      x: fx * CONFIG.WIDTH,
+      y: fy * CONFIG.HEIGHT,
     };
   }
 
@@ -83,8 +91,11 @@ class Input {
 
   _onMouseMove(e) {
     if (!this.hasMouse) this.hasMouse = true;
+    const pos = this._clientPos(e);
+    this.mouseX = pos.x;
+    this.mouseY = pos.y;
+    this.mouseInCanvas = true;
     if (this.touching) {
-      const pos = this._clientPos(e);
       this.touchX = pos.x; this.touchY = pos.y;
     }
   }

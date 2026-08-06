@@ -62,6 +62,18 @@ class Game {
     return this.canvas._pixelScale || 1;
   }
 
+  /** Menu render needs a time source — performance.now() is injected by loop. */
+  _now() {
+    return performance.now();
+  }
+
+  /** Convert a menu button index to its scene-space rect (matches Menu.js layout). */
+  _buttonRect(i) {
+    const cx = CONFIG.WIDTH / 2;
+    const startY = CONFIG.HEIGHT * 0.62;
+    return { x: cx - 110, y: startY + i * 48, w: 220, h: 48 };
+  }
+
   init() {
     this.input = new Input(this.canvas, () => this._onInteraction());
     this.loop.start(dt => this._update(dt), () => this._render());
@@ -109,7 +121,14 @@ class Game {
         if (!this._bgmStarted && this.input.isTouching()) {
           this._bgmStarted = true;
         }
-        this.menuScreen.handleTap(this, this.input);
+        // Menu button interaction: tap START → play, UPGRADES → meta, CREDITS → noop
+        if (this.input.justTapped) {
+          const idx = this.menuScreen.getHoveredButton(this.input.touchX, this.input.touchY);
+          const action = this.menuScreen.handleTap(idx, this);
+          if (action === 'start') this.startGame();
+          else if (action === 'upgrades') this.showMeta();
+          // credits: Phase 3 modal
+        }
         break;
 
       case 'playing':
@@ -186,7 +205,21 @@ class Game {
     // Menu state: skip bloom, no camera shake
     if (this.state === 'menu' || this.state === 'meta') {
       if (this.state === 'menu') {
-        this.menuScreen.render(ctx, null);
+        const now = this._now();
+        this.menuScreen.render(ctx, now);
+        // Update hover state from tracked mouse
+        if (this.input && this.input.mouseInCanvas) {
+          this.menuScreen.updateHover(this.input.mouseX, this.input.mouseY);
+          // Highlighted button — subtle indicator
+          const hi = this.menuScreen.hoveredId;
+          if (hi >= 0) {
+            const rect = this._buttonRect(hi);
+            ctx.strokeStyle = 'rgba(100, 170, 255, 0.85)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+            ctx.fillStyle = 'rgba(200, 230, 255, 0.95)';
+          }
+        }
       } else {
         // Meta placeholder — dark panel + "UPGRADES" + tap to return
         ctx.fillStyle = 'rgba(5,5,16,0.92)';
