@@ -174,20 +174,20 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 // ── Visibility change (BGM pause) ──
 function handleVisibilityChange() {
   const g = window.__game;
-  if (!g || !g.audio) return;
+  if (!g || !g.music) return;
   if (document.hidden) {
-    g.audio.bgmStop();
+    g.music.stopMusic();
   } else {
     if (g.state === 'playing' || g.state === 'boss') {
-      g.audio.bgmSetState(g.state);
+      g.music.transition(g.state);
     } else if (g.state === 'menu') {
-      g.audio.bgmStart('menu');
+      g.music.transition('menu');
     }
   }
 }
 document.addEventListener('visibilitychange', handleVisibilityChange);
-window.addEventListener('pagehide', () => { const g = window.__game; if (g && g.audio) g.audio.bgmStop(); });
-window.addEventListener('beforeunload', () => { const g = window.__game; if (g && g.audio) g.audio.bgmStop(); });
+window.addEventListener('pagehide', () => { const g = window.__game; if (g && g.music) g.music.stopMusic(); });
+window.addEventListener('beforeunload', () => { const g = window.__game; if (g && g.music) g.music.stopMusic(); });
 
 // ── Boot game ──
 let game;
