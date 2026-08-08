@@ -362,7 +362,7 @@ class Game {
       this.enemiesSpawnedThisWave++;
     }
 
-    if ((CONFIG.BOSS_WAVE || 10) && this.wave === CONFIG.BOSS_WAVE &&
+    if ((CONFIG.BOSS_WAVES || [10]).includes(this.wave) &&
         !this.enemies.bossSpawnedThisWave &&
         this.enemiesSpawnedThisWave >= this.enemiesThisWave * 0.5) {
       this.enemies.bossSpawnedThisWave = true;
@@ -916,6 +916,30 @@ class Game {
     this.bullets.renderPlayerBullets(ctx);
     this.bullets.renderEnemyBullets(ctx);
     this.player.render(ctx, performance.now() / 1000);
+
+    // Boss name + HP bar (top of screen)
+    if (this.enemies.bossActive) {
+      const boss = this.enemies.pool.active.find(e => e.isBoss && e.alive !== false);
+      if (boss) {
+        const bw = 360, bx = (CONFIG.WIDTH - bw) / 2;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 16px monospace';
+        ctx.fillStyle = boss.color;
+        ctx.shadowColor = boss.color;
+        ctx.shadowBlur = 12;
+        ctx.fillText(boss.bossName || 'BOSS', CONFIG.WIDTH / 2, 38);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(bx, 48, bw, 10);
+        ctx.fillStyle = boss.color;
+        ctx.fillRect(bx, 48, bw * Math.max(0, boss.hp / boss.maxHp), 10);
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bx, 48, bw, 10);
+        ctx.restore();
+      }
+    }
 
     // Laser beam render
     if (this.player.alive && this.player.laserActive) {

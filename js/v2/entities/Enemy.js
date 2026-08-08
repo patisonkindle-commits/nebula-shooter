@@ -87,14 +87,24 @@ export class EnemyManager {
   spawnBoss(wave) {
     const e = this.pool.acquire();
     if (!e) return;
+
+    // Pick boss kind by wave: 5=Koloss-lite, 10=classic, 15/20=Koloss, 25=Umbra end-boss
+    let bossKind = 'classic';
+    const UMBRA = CONFIG.UMBRA, KOLOSS = CONFIG.KOLOSS;
+    if (wave >= UMBRA.wave) bossKind = 'umbra';
+    else if (wave >= 15) bossKind = 'koloss';
+    else if (wave >= KOLOSS.wave && wave !== 10) bossKind = 'kolossLite';
+
     const waveScale = wave ? (1 + CONFIG.WAVE_HP_SCALE * wave) : 1;
     e.type = 'boss';
-    e.hp = Math.round(CONFIG.BOSS_HP * waveScale);
+    e.bossKind = bossKind;
+    e.bossName = (bossKind === 'classic') ? 'OVERMIND' : (bossKind === 'kolossLite' ? CONFIG.KOLOSS.name : CONFIG[bossKind.toUpperCase()].name);
+    e.hp = Math.round((bossKind === 'umbra' ? CONFIG.UMBRA.hpMultiplier : bossKind.startsWith('koloss') ? CONFIG.KOLOSS.hpMultiplier : 1) * CONFIG.BOSS_HP * waveScale);
     e.maxHp = e.hp;
-    e.radius = CONFIG.BOSS_RADIUS;
+    e.radius = bossKind === 'umbra' ? CONFIG.UMBRA.radius : bossKind.startsWith('koloss') ? CONFIG.KOLOSS.radius : CONFIG.BOSS_RADIUS;
     e.speed = CONFIG.BOSS_SPEED;
-    e.score = Math.round(CONFIG.BOSS_SCORE * (1 + CONFIG.WAVE_SCORE_SCALE * (wave || 1)));
-    e.color = '#ff44ff';
+    e.score = Math.round((bossKind === 'umbra' ? CONFIG.UMBRA.score : bossKind.startsWith('koloss') ? CONFIG.KOLOSS.score : CONFIG.BOSS_SCORE) * (1 + CONFIG.WAVE_SCORE_SCALE * (wave || 1)));
+    e.color = bossKind === 'umbra' ? CONFIG.UMBRA.color : bossKind.startsWith('koloss') ? CONFIG.KOLOSS.color : '#ff44ff';
     e.x = CONFIG.WIDTH / 2;
     e.y = -40;
     e.vx = 0; e.vy = 0;
@@ -107,9 +117,13 @@ export class EnemyManager {
     e.phaseTransitionTimer = 0;
     e.spiralAngle = 0;
     e.moveTimer = 0;
+    e.minionTimer = 0;
+    e.umbraPhase = 1;
+    e.umbraTelegraph = 0;
     this.bossActive = true;
     this.bossDefeated = false;
     this.bossSpawnedThisWave = true;
+    return e;
   }
 
   update(dt, player, bullets, game) {
@@ -337,6 +351,17 @@ export class EnemyManager {
     const W = CONFIG.WIDTH, H = CONFIG.HEIGHT;
     e.moveTimer += dt;
 
+    // Kind-specific behavior
+    if (e.bossKind === 'umbra') {
+      this._updateUmbra(dt, e, player, bullets, game);
+      return;
+    }
+    if (e.bossKind === 'koloss' || e.bossKind === 'kolossLite') {
+      this._updateKoloss(dt, e, player, bullets, game);
+      return;
+    }
+
+    // Classic (wave-10) — v1 behavior
     if (e.hp < e.maxHp * 0.5 && e.bossPhase === 1) {
       e.bossPhase = 2;
       e.phaseTransitionTimer = 1;
@@ -460,6 +485,125 @@ export class EnemyManager {
       const a = baseAngle - spread / 2 + (i / (count - 1)) * spread + rand(-0.04, 0.04);
       bullets.fireEnemyBullet(e.x, e.y, a, CONFIG.ENEMY_BULLET_SPEED * (0.5 + Math.random() * 0.5), '#ff4444', true, CONFIG.BOSS_DAMAGE);
     }
+  }
+
+  // ─── Koloss — heavy tank: alternating ring + aimed spray; phase 2 speeds up ───
+  _updateKoloss(dt, e, player, bullets, game) {
+    const W = CONFIG.WIDTH, H = CONFIG.HEIGHT;
+    const lite = e.bossKind === 'kolossLite';
+    e.moveTimer += dt;
+
+    if (e.hp < e.maxHp * 0.5 && e.bossPhase === 1) {
+      e.bossPhase = 2;
+      e.phaseTransitionTimer = 1;
+      game.screenShake = 12;
+      game.chromaticIntensity = 6;
+      game.screenFlash = 0.3;
+      e.fireRate = lite ? 1.0 : 0.85;
+    }
+    if (e.phaseTransitionTimer > 0) e.phaseTransitionTimer -= dt;
+
+    // Slow sine drift, phase 2 faster
+    const amp = lite ? W * 0.28 : W * 0.32;
+    const spd = e.bossPhase === 1 ? (lite ? 0.3 : 0.35) : (lite ? 0.55 : 0.6);
+    e.x = W / 2 + Math.sin(e.moveTimer * spd) * amp;
+    e.y = Math.min(120, H * 0.15 + Math.sin(e.moveTimer * spd * 0.7) * 22);
+
+    e.fireTimer -= dt;
+    if (e.fireTimer <= 0) {
+      // Phase 1: ring burst; Phase 2: ring + aimed spray
+      e.fireTimer = e.bossPhase === 1 ? (lite ? 2.0 : 1.8) : (lite ? 1.2 : 1.0);
+      this._bossRingBurst(e, bullets, lite ? 1 : 1.3);
+      if (e.bossPhase === 2) this._bossSpray(e, player, bullets);
+    }
+  }
+
+  // ─── Umbra — 3-phase end-boss ───
+  // Phase 1: spiral rings; Phase 2: aimed lance waves (telegraphed); Phase 3: minion spawns + frenzy
+  _updateUmbra(dt, e, player, bullets, game) {
+    const W = CONFIG.WIDTH, H = CONFIG.HEIGHT;
+    const hpPct = e.hp / e.maxHp;
+    if (hpPct < 0.66 && e.umbraPhase === 1) {
+      e.umbraPhase = 2;
+      e.phaseTransitionTimer = 1.5;
+      game.screenShake = 14;
+      game.chromaticIntensity = 8;
+      game.screenFlash = 0.4;
+    } else if (hpPct < 0.33 && e.umbraPhase === 2) {
+      e.umbraPhase = 3;
+      e.phaseTransitionTimer = 1.5;
+      game.screenShake = 14;
+      game.chromaticIntensity = 8;
+      game.screenFlash = 0.4;
+    }
+    if (e.phaseTransitionTimer > 0) {
+      e.phaseTransitionTimer -= dt;
+      e.spawnFlash = Math.max(e.spawnFlash, 1);
+      return; // frozen during transition
+    }
+    e.moveTimer += dt;
+
+    // Harder movement per phase
+    const speed = [0.4, 0.55, 0.8][e.umbraPhase - 1] || 0.8;
+    e.x = W / 2 + Math.sin(e.moveTimer * speed) * W * 0.36;
+    e.y = Math.min(120, H * 0.15 + Math.sin(e.moveTimer * speed * 0.9) * 34);
+
+    e.fireTimer -= dt;
+    if (e.fireTimer <= 0) {
+      if (e.umbraPhase === 1) {
+        e.fireTimer = 0.9;
+        this._bossSpiral(e, bullets);
+        this._bossSpray(e, player, bullets);
+      } else if (e.umbraPhase === 2) {
+        e.fireTimer = 1.4;
+        this._bossSpiral(e, bullets);
+        this._bossSpray(e, player, bullets);
+      } else {
+        e.fireTimer = 0.7;
+        this._bossSpiral(e, bullets);
+      }
+    }
+
+    // Phase 3: periodic minion spawns
+    if (e.umbraPhase === 3) {
+      e.minionTimer -= dt;
+      if (e.minionTimer <= 0) {
+        e.minionTimer = 2.5;
+        // Spawn 2 wraith minions at edges
+        for (let i = 0; i < 2; i++) {
+            const m = this.pool.acquire();
+            if (!m) continue;
+            const side = i === 0 ? -1 : 1;
+            m.type = 'warp';
+            m.hp = 1;
+            m.maxHp = 1;
+            m.radius = 10;
+            m.speed = 120;
+            m.score = 10;
+            m.color = '#ff66aa';
+            m.x = W / 2 + side * (W * 0.4);
+            m.y = -20;
+            m.vx = 0; m.vy = 0;
+            m.spawnFlash = 0.4;
+            m.fireTimer = rand(1, 2);
+            m.fireRate = 2;
+            m.isBoss = false;
+            m.isElite = false;
+            m.vortexAngle = 0;
+            m.vortexReachedPos = false;
+            m.vortexStopY = 0;
+            m.mineTimer = 0;
+            m.warpCooldown = 0;
+            m.warpTeleporting = false;
+            m.warpFlash = 0;
+            m.warpTimer = 0;
+            m.shieldHp = 0; m.shieldMax = 0; m.shieldRechargeTimer = 0;
+            m.disruptCooldown = 0;
+            m.zigzagDir = Math.random() < 0.5 ? -1 : 1;
+            m.zigzagTimer = 0;
+          }
+        }
+      }
   }
 
   render(ctx) {
@@ -622,6 +766,8 @@ export class EnemyManager {
         ctx.arc(0, 0, 3, 0, Math.PI * 2);
         ctx.fill();
         break;
+      case 'umbra': // boss-only type; now rendered via _renderBoss
+        break;
       case 'shielder':
         // Main body
         ctx.shadowBlur = 10;
@@ -710,25 +856,95 @@ export class EnemyManager {
     const flash = e.phaseTransitionTimer > 0;
     if (flash) ctx.globalAlpha = 0.6 + 0.4 * Math.sin(e.phaseTransitionTimer * 20);
 
-    ctx.shadowColor = '#ff44ff';
-    ctx.shadowBlur = 20;
+    // Classic: 12-point angular hull, phase 1/2 color
+    if (e.bossKind === 'classic') {
+      ctx.shadowColor = '#ff44ff';
+      ctx.shadowBlur = 20;
+      ctx.strokeStyle = e.bossPhase === 1 ? '#ff44ff' : '#ff2222';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius + 6, 0, Math.PI * 2);
+      ctx.stroke();
 
-    ctx.strokeStyle = e.bossPhase === 1 ? '#ff44ff' : '#ff2222';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(0, 0, e.radius + 6, 0, Math.PI * 2);
-    ctx.stroke();
+      ctx.fillStyle = e.bossPhase === 1 ? '#661166' : '#661111';
+      ctx.beginPath();
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2 + performance.now() * 0.0005;
+        const rad = i % 2 === 0 ? e.radius : e.radius * 0.85;
+        ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad);
+      }
+      ctx.closePath();
+      ctx.fill();
 
-    ctx.fillStyle = e.bossPhase === 1 ? '#661166' : '#661111';
-    ctx.beginPath();
-    ctx.arc(0, 0, e.radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = e.bossPhase === 1 ? '#ff66ff' : '#ff4444';
-    ctx.shadowBlur = 12;
-    ctx.beginPath();
-    ctx.arc(0, 0, e.radius * 0.4, 0, Math.PI * 2);
-    ctx.fill();
+      ctx.fillStyle = e.bossPhase === 1 ? '#ff66ff' : '#ff4444';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Koloss: angular 8-sided, yellow eyes
+    else if (e.bossKind === 'koloss' || e.bossKind === 'kolossLite') {
+      ctx.shadowColor = e.color;
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = e.color;
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + performance.now() * 0.001;
+        const rad = i % 2 === 0 ? e.radius : e.radius * 0.7;
+        ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#ffdd44';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(-5, 0, 4, 0, Math.PI * 2);
+      ctx.arc(5, 0, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Umbra: 3-arm spiral, phase-based rendering
+    else if (e.bossKind === 'umbra') {
+      if (e.umbraPhase === 1) {
+        ctx.shadowColor = e.color;
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = e.color;
+        for (let i = 0; i < 3; i++) {
+          const a = -Math.PI / 2 + (i / 3) * Math.PI * 2 + performance.now() * 0.002;
+          ctx.beginPath();
+          ctx.arc(Math.cos(a) * e.radius * 0.6, Math.sin(a) * e.radius * 0.6, e.radius * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(0, 0, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (e.umbraPhase === 2) {
+        ctx.shadowColor = e.color;
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(0, 0, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.shadowColor = e.color;
+        ctx.shadowBlur = 24;
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(0, 0, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
 
     ctx.fillStyle = '#ffffff';
     ctx.shadowBlur = 0;
