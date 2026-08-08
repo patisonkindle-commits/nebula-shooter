@@ -47,6 +47,9 @@ export const CONFIG = {
   VORTEX:    { hp: 5, speed: 55,  radius: 18, score: 45, color: '#44ffdd' },
   MINELAYER: { hp: 4, speed: 35,  radius: 16, score: 35, color: '#88ff44' },
   WARP:      { hp: 2, speed: 100, radius: 12, score: 30, color: '#dd77ff' },
+  SHIELDER:  { hp: 4, speed: 40,  radius: 16, score: 40, color: '#66ccff', shieldHp: 3, shieldRecharge: 4 },
+  DISRUPTER: { hp: 2, speed: 55,  radius: 14, score: 35, color: '#ff66aa', disruptChance: 0.2 },
+  RIPPER:    { hp: 1, speed: 220, radius: 14, score: 25, color: '#ff5555', zigzag: 90 },
 
   // Wave scaling
   WAVE_HP_SCALE: 0.06,
@@ -119,4 +122,4 @@ export const RENDER = {
 };
 
 // v2 enemy archetypes — extended (Task 4.3)
-export const ENEMY_TYPES = ['swarmer','sniper','tank','kamikaze','blocker','vortex','minelayer','warp'];
+export const ENEMY_TYPES = ['swarmer','sniper','tank','kamikaze','blocker','vortex','minelayer','warp','shielder','disrupter','ripper'];

@@ -386,6 +386,10 @@ class Game {
     if (this.wave >= 4) types.push('vortex', 'vortex');
     if (this.wave >= 6) types.push('minelayer', 'minelayer');
     if (this.wave >= 7) types.push('warp', 'warp');
+    if (this.wave >= 6) types.push('ripper');
+    if (this.wave >= 8) types.push('shielder', 'shielder');
+    if (this.wave >= 9) types.push('disrupter', 'disrupter');
+    if (this.wave >= 12) types.push('ripper', 'shielder');
     const type = types[Math.floor(Math.random() * types.length)];
     this.enemies.spawn(type, null, null, this.wave);
   }
@@ -402,6 +406,12 @@ class Game {
       for (const e of near) {
         if (!e.alive) continue;
         const d = dist(b, e);
+        // Disrupter aura: 20% of bullets near it fizzle
+        if (e.type === 'disrupter' && d < e.radius + 60 && Math.random() < 0.2) {
+          this.particles.emit(b.x, b.y, 3, { speed: 40, color: '#ff66aa', size: 2, life: 0.2 });
+          this.bullets.playerBullets.release(b);
+          return;
+        }
         if (d < e.radius + b.radius) {
           if (b.burst && !b.isBurstSub) {
             this._queueBurst(b.x, b.y, b.damage);

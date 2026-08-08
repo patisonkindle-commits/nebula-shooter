@@ -17,6 +17,8 @@ function createEnemy() {
     vortexAngle: 0, vortexReachedPos: false, vortexStopY: 0,
     mines: null, mineTimer: 0,
     warpTimer: 0, warpCooldown: 0, warpTeleporting: false, warpFlash: 0,
+    shieldHp: 0, shieldMax: 0, shieldRechargeTimer: 0,
+    disruptCooldown: 0, zigzagDir: 1, zigzagTimer: 0,
   };
 }
 
@@ -73,6 +75,12 @@ export class EnemyManager {
     e.warpCooldown = 0;
     e.warpTeleporting = false;
     e.warpFlash = 0;
+    e.shieldHp = t.shieldHp || 0;
+    e.shieldMax = e.shieldHp;
+    e.shieldRechargeTimer = 0;
+    e.disruptCooldown = 0;
+    e.zigzagDir = Math.random() < 0.5 ? -1 : 1;
+    e.zigzagTimer = 0;
     return e;
   }
 
@@ -177,6 +185,15 @@ export class EnemyManager {
       case 'warp':
         this._updateWarp(dt, e, player, bullets);
         break;
+      case 'shielder':
+        this._updateShielder(dt, e, player, game);
+        break;
+      case 'disrupter':
+        this._updateDisrupter(dt, e, player);
+        break;
+      case 'ripper':
+        this._updateRipper(dt, e, player);
+        break;
     }
 
     e.y += e.vy * dt;
@@ -269,6 +286,50 @@ export class EnemyManager {
       e.fireTimer = 1.0 + rand(0, 0.5);
       const a = angleTo(e, player);
       bullets.fireEnemyBullet(e.x, e.y, a, CONFIG.ENEMY_BULLET_SPEED * 0.9, '#dd77ff');
+    }
+  }
+
+  _updateShielder(dt, e, player, game) {
+    const t = CONFIG.SHIELDER;
+    // Move down slowly, entities behind it protected by front-facing shield
+    e.vy = lerp(e.vy, t.speed, dt);
+    e.x += Math.sin(performance.now() * 0.0015 + e.y * 0.01) * 20 * dt;
+
+    // Shield regenerates after a pause
+    if (e.shieldHp < e.shieldMax) {
+      e.shieldRechargeTimer += dt;
+      if (e.shieldRechargeTimer > t.shieldRecharge) {
+        e.shieldHp = e.shieldMax;
+        e.shieldRechargeTimer = 0;
+        if (game) game.particles.emit(e.x, e.y, 6, { speed: 30, color: '#66ccff', size: 2, life: 0.3 });
+      }
+    }
+  }
+
+  _updateDisrupter(dt, e, player) {
+    const t = CONFIG.DISRUPTER;
+    e.vy = lerp(e.vy, t.speed, dt);
+    e.x += Math.sin(performance.now() * 0.002 + e.y * 0.008) * 30 * dt;
+    // Aura pulses — scrambles player fire (miss 20%)
+  }
+
+  _updateRipper(dt, e, player) {
+    const t = CONFIG.RIPPER;
+    // Fast zigzag toward player, kamikaze dive
+    if (e.y < CONFIG.HEIGHT * 0.2) {
+      e.vy = t.speed;
+      e.zigzagTimer += dt;
+      if (e.zigzagTimer > 0.4) {
+        e.zigzagDir *= -1;
+        e.zigzagTimer = 0;
+      }
+      e.x += e.zigzagDir * t.zigzag * dt;
+    } else {
+      const a = angleTo(e, player);
+      e.vx = Math.cos(a) * t.speed * 1.6;
+      e.vy = Math.sin(a) * t.speed * 1.6;
+      e.x += e.vx * dt;
+      e.y += e.vy * dt;
     }
   }
 
@@ -561,6 +622,76 @@ export class EnemyManager {
         ctx.arc(0, 0, 3, 0, Math.PI * 2);
         ctx.fill();
         break;
+      case 'shielder':
+        // Main body
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.moveTo(0, -e.radius);
+        ctx.lineTo(e.radius * 0.85, 0);
+        ctx.lineTo(0, e.radius);
+        ctx.lineTo(-e.radius * 0.85, 0);
+        ctx.closePath(); ctx.fill();
+        // Front shield wedge (absorbs)
+        if (e.shieldHp > 0) {
+          ctx.fillStyle = `rgba(102, 204, 255, ${0.25 + 0.2 * Math.sin(performance.now() * 0.005)})`;
+          ctx.beginPath();
+          ctx.arc(0, 0, e.radius * 1.3, -Math.PI / 2 - 0.6, -Math.PI / 2 + 0.6);
+          ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = 'rgba(200, 240, 255, 0.8)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, e.radius * 1.3, -Math.PI / 2 - 0.6, -Math.PI / 2 + 0.6);
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#ccffff';
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(0, -3, 3, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 'disrupter':
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = -Math.PI / 2 + (i / 6) * Math.PI * 2;
+          const r = i % 2 === 0 ? e.radius : e.radius * 0.55;
+          ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        ctx.closePath(); ctx.fill();
+        // Aura ring (scramble zone)
+        ctx.strokeStyle = `rgba(255, 102, 170, ${0.25 + 0.15 * Math.sin(performance.now() * 0.004)})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius + 12, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(0, 0, 3, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 'ripper':
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = e.color;
+        // Claw orb — 3 curved fangs
+        for (let i = 0; i < 3; i++) {
+          const a = -Math.PI / 2 + (i / 3) * Math.PI * 2 + performance.now() * 0.004;
+          ctx.beginPath();
+          ctx.arc(Math.cos(a) * e.radius * 0.5, Math.sin(a) * e.radius * 0.5, e.radius * 0.55, a - 1, a + 1);
+          ctx.fill();
+        }
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffdddd';
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(0, 0, 3, 0, Math.PI * 2);
+        ctx.fill();
+        break;
     }
 
     if (e.maxHp > 1) {
@@ -632,6 +763,15 @@ export class EnemyManager {
   }
 
   damageEnemy(e, amount, game) {
+    // Shielder: front shield absorbs damage first
+    if (e.shieldHp > 0) {
+      e.shieldHp -= amount;
+      if (e.shieldHp <= 0) {
+        e.shieldHp = 0;
+        e.shieldRechargeTimer = 0; // start regen countdown
+      }
+      return false;
+    }
     e.hp -= amount;
     if (e.hp <= 0) {
       this.pool.release(e);
