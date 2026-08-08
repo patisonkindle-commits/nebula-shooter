@@ -21,8 +21,10 @@ import { MetaScreen } from '../ui/MetaScreen.js';
 import { UpgradeUI } from '../ui/UpgradeUI.js';
 import { HUD } from '../ui/HUD.js';
 import { GameOverUI } from '../ui/GameOverUI.js';
+import { Hangar } from '../ui/Hangar.js';
 import { SaveManager } from '../systems/SaveManager.js';
 import { MetaProgression } from '../systems/MetaProgression.js';
+import { SHIPS } from '../entities/ships.js';
 
 class Game {
   constructor(canvas, ctx) {
@@ -52,6 +54,7 @@ class Game {
     this.metaScreen = new MetaScreen(this);
     this.upgradeUI = new UpgradeUI(this);
     this.gameOverUI = new GameOverUI(this);
+    this.hangar = new Hangar(this);
 
     // HUD
     this.hud = new HUD(canvas, ctx, this);
@@ -191,6 +194,23 @@ class Game {
           else if (action === 'upgrades') {
             this.state = 'meta';
             this.metaScreen.show();
+          }
+          else if (action === 'hangar') {
+            this.state = 'hangar';
+            this.hangar.show();
+          }
+        }
+        break;
+
+      case 'hangar':
+        this.starField.update(dt);
+        this.hangar.updateHover(this.input.mouseX, this.input.mouseY);
+        if (this.input.justTapped) {
+          const p = this.input.getPos();
+          const res = this.hangar.handleTap(p.x, p.y);
+          if (res && res.action === 'back') {
+            this.state = 'menu';
+            this.hangar.hide();
           }
         }
         break;
@@ -682,6 +702,12 @@ class Game {
     this.music.updateIntensity(this.wave, false);
   }
 
+  /** Current selected ship def (from save, defaults vanguard) */
+  selectedShip() {
+    const id = this.save.get('selectedShip', 'vanguard');
+    return SHIPS[id] || SHIPS.vanguard;
+  }
+
   startGame() {
     this.score = 0;
     this.xp = 0;
@@ -712,7 +738,7 @@ class Game {
     this.announcements = [];
     this._resetJuice();
 
-    this.player.reset(this.metaProgression);
+    this.player.reset(this.metaProgression, this.selectedShip());
     this.enemies.pool.releaseAll();
     this.bullets.playerBullets.releaseAll();
     this.bullets.enemyBullets.releaseAll();
@@ -845,10 +871,12 @@ class Game {
       ctx.translate(shakeX, shakeY);
     }
 
-    if (this.state === 'menu' || this.state === 'meta') {
+    if (this.state === 'menu' || this.state === 'meta' || this.state === 'hangar') {
       this.menuScreen.render(ctx, performance.now());
       if (this.state === 'meta') {
         this.metaScreen.render(ctx);
+      } else if (this.state === 'hangar') {
+        this.hangar.render(ctx);
       }
       ctx.restore();
       return;

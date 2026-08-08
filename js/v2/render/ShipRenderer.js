@@ -36,13 +36,14 @@ function renderPlayer(ctx, p, time) {
   const tilt = Math.max(-0.3, Math.min(0.3, (p.vx || 0) / 400));
   ctx.rotate(tilt);
 
-  // Engine glow — flicker via sin noise
+  // Engine glow — flicker via sin noise, tinted by ship color
   const flamePulse = 0.6 + 0.4 * Math.sin(time * 0.015 + p.enginePulse * 3);
   const flameLen = 14 + 8 * flamePulse;
+  const flameCol = (p.ship && p.ship.color) || '#64b4ff';
   const outerGrad = ctx.createRadialGradient(0, 14 + flameLen * 0.3, 2, 0, 14 + flameLen * 0.3, flameLen * 2);
-  outerGrad.addColorStop(0, `rgba(100, 180, 255, ${flamePulse * 0.35})`);
-  outerGrad.addColorStop(0.5, `rgba(50, 100, 200, ${flamePulse * 0.12})`);
-  outerGrad.addColorStop(1, 'rgba(100, 180, 255, 0)');
+  outerGrad.addColorStop(0, `${flameCol}${Math.round(flamePulse * 0.35 * 255).toString(16).padStart(2, '0')}`);
+  outerGrad.addColorStop(0.5, 'rgba(50, 100, 200, 0.12)');
+  outerGrad.addColorStop(1, `${flameCol}00`);
   ctx.fillStyle = outerGrad;
   ctx.beginPath();
   ctx.arc(0, 14 + flameLen * 0.3, flameLen * 2, 0, Math.PI * 2);
@@ -55,21 +56,22 @@ function renderPlayer(ctx, p, time) {
 
   const r = p.radius || 14;
 
-  // Hull fill — linear gradient (nose light → tail dark)
+  // Hull fill — linear gradient (nose light → tail dark), tinted by ship color
+  const sc = (p.ship && p.ship.color) || '#4a9eff';
   const hullGrad = ctx.createLinearGradient(0, -r, 0, r);
-  hullGrad.addColorStop(0, '#1e3a5f');
+  hullGrad.addColorStop(0, sc);
   hullGrad.addColorStop(0.6, '#0f1e3a');
   hullGrad.addColorStop(1, '#081224');
   ctx.fillStyle = hullGrad;
 
-  ctx.shadowColor = '#4a9eff';
+  ctx.shadowColor = sc;
   ctx.shadowBlur = 18;
   polygon(ctx, PLAYER_HULL, r);
   ctx.fill();
 
   // Hull edge glow
   ctx.shadowBlur = 0;
-  ctx.strokeStyle = '#4a9eff';
+  ctx.strokeStyle = sc;
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
@@ -79,7 +81,7 @@ function renderPlayer(ctx, p, time) {
   ctx.lineTo(-r * 0.4, r * 0.2);
   ctx.lineTo(r * 0.4, r * 0.2);
   ctx.closePath();
-  ctx.fillStyle = 'rgba(74, 158, 255, 0.08)';
+  ctx.fillStyle = sc + '14';
   ctx.fill();
 
   // Cockpit

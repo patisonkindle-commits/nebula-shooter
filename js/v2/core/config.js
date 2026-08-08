@@ -1,4 +1,6 @@
 // Project Nebula v2 — tunable constants (extends v1, adds v2 keys)
+import { SHIPS } from '../entities/ships.js';
+export { SHIPS };
 export const CONFIG = {
   // Canvas / layout
   WIDTH: 400,
@@ -115,10 +117,6 @@ export const RENDER = {
   STAR_LAYERS: 3,             // parallax depth layers
   VIGNETTE_STRENGTH: 0.6,
 };
-
-// v2 ship archetypes (Task 4.1 — filled in Phase 4)
-export const SHIPS = {};
-export const WEAPONS = {};
 
 // v2 enemy archetypes — extended (Task 4.3)
 export const ENEMY_TYPES = ['swarmer','sniper','tank','kamikaze','blocker','vortex','minelayer','warp'];

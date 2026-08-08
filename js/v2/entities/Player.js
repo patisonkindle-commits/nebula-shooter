@@ -44,26 +44,29 @@ class Player {
     this._upgradedThisFrame = false;
   }
 
-  reset(meta) {
+  reset(meta, ship) {
     const m = meta ? meta.getAppliedModifiers() : {};
+    const s = ship || {};
     this.x = CONFIG.WIDTH / 2;
     this.y = CONFIG.HEIGHT * 0.75;
     this.vx = 0;
     this.vy = 0;
-    this.hp = CONFIG.PLAYER_MAX_HP + (m.hull ? m.hull * 5 : 0);
-    this.maxHp = CONFIG.PLAYER_MAX_HP + (m.hull ? m.hull * 5 : 0);
+    this.hp = (s.hp || CONFIG.PLAYER_MAX_HP) + (m.hull ? m.hull * 5 : 0);
+    this.maxHp = (s.hp || CONFIG.PLAYER_MAX_HP) + (m.hull ? m.hull * 5 : 0);
     this.shield = 0;
     this.maxShield = 0;
     if (m.shield) this.shield = this.maxShield = m.shield;
     this.alive = true;
     this.fireTimer = 0;
-    this.fireRate = CONFIG.PLAYER_FIRE_RATE;
+    this.fireRate = (s.fireRate || CONFIG.PLAYER_FIRE_RATE);
     if (m.fireRate) this.fireRate *= m.fireRate;
     this.invincibleTimer = 0;
     this.speedMultiplier = 1;
     this.damageMultiplier = 1;
-    this.moveSpeed = CONFIG.PLAYER_SPEED;
+    this.moveSpeed = (s.speed || CONFIG.PLAYER_SPEED);
     if (m.moveSpeed) this.moveSpeed *= m.moveSpeed;
+    this.ship = s;
+    this.critChance = s.special === 'crit' ? 0.2 : 0;
     this.shieldFlash = 0;
     this.spreadLevel = 0;
     this.homingLevel = 0;
@@ -121,6 +124,7 @@ class Player {
     if (bullets) {
       this.fireTimer -= dt;
       if (this.fireTimer <= 0) {
+        this._fireBase(bullets);
         this._fireSpread(bullets);
         this._fireHoming(bullets);
         this._firePiercing(bullets);
@@ -159,6 +163,20 @@ class Player {
         };
       }
     }
+  }
+
+  /** Base weapon per ship (Task 4.1) — vanguard=single, interceptor=twin, others=heavy single */
+  _fireBase(bullets) {
+    const ship = this.ship || {};
+    const crit = this.critChance > 0 && Math.random() < this.critChance;
+    const dmg = (ship.damage || 1) * (crit ? 2 : 1);
+    if (ship.projectile === 'twin') {
+      bullets.firePlayerBullet(this.x - 9, this.y - this.radius, -Math.PI / 2, dmg);
+      bullets.firePlayerBullet(this.x + 9, this.y - this.radius, -Math.PI / 2, dmg);
+      return;
+    }
+    // vanguard single (plasma/lance handled in Task 4.2 weapons.js)
+    bullets.firePlayerBullet(this.x, this.y - this.radius, -Math.PI / 2, dmg);
   }
 
   _fireSpread(bullets) {
