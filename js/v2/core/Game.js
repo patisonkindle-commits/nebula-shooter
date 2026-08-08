@@ -17,6 +17,12 @@ import { AudioManager } from '../systems/AudioManager.js';
 import { MusicEngine } from '../systems/MusicEngine.js';
 import { SfxEngine } from '../systems/SfxEngine.js';
 import { MenuScreen } from '../ui/Menu.js';
+import { MetaScreen } from '../ui/MetaScreen.js';
+import { UpgradeUI } from '../ui/UpgradeUI.js';
+import { HUD } from '../ui/HUD.js';
+import { GameOverUI } from '../ui/GameOverUI.js';
+import { SaveManager } from '../systems/SaveManager.js';
+import { MetaProgression } from '../systems/MetaProgression.js';
 
 class Game {
   constructor(canvas, ctx) {
@@ -39,6 +45,16 @@ class Game {
     this.music = new MusicEngine();
     this.sfx = new SfxEngine(this.audio);
     this.menuScreen = new MenuScreen();
+
+    // Meta-progression (Task 3.4)
+    this.save = new SaveManager();
+    this.metaProgression = new MetaProgression(this.save);
+    this.metaScreen = new MetaScreen(this);
+    this.upgradeUI = new UpgradeUI(this);
+    this.gameOverUI = new GameOverUI(this);
+
+    // HUD
+    this.hud = new HUD(canvas, ctx, this);
 
     // Run state
     this.wave = 0;
@@ -88,12 +104,8 @@ class Game {
     this._burstPending = [];
     this._bgmStarted = false;
 
-    // Meta (stub — real MetaProgression in Task 3.3)
-    this.meta = {
-      cores: 0,
-      getAppliedModifiers() { return {}; },
-      earnCores(n) { this.cores += n; },
-    };
+    // Upgrade timer (state 'upgrade')
+    this._upgradeTimer = 0;
 
     // FPS
     this._fps = 0;
@@ -176,7 +188,10 @@ class Game {
           const idx = this.menuScreen.getHoveredButton(p.x, p.y);
           const action = this.menuScreen.handleTap(idx, this);
           if (action === 'start') this.startGame();
-          else if (action === 'upgrades') this.state = 'meta';
+          else if (action === 'upgrades') {
+            this.state = 'meta';
+            this.metaScreen.show();
+          }
         }
         break;
 
@@ -189,16 +204,27 @@ class Game {
         if (this.screenShake < 0.5) this.screenShake = 0;
         this.starField.update(dt * 0.3);
         this.particles.update(dt * 0.3);
-        // Simple upgrade stub: auto-dismiss after 1.5s picks first option
-        // Full UpgradeUI lands in Task 3.4.
-        this._upgradeTimer = (this._upgradeTimer || 0) - dt;
-        if (this._upgradeTimer <= 0) {
-          const options = this._rollUpgrades();
-          if (options.length > 0) {
-            this._applyUpgrade(options[0]);
+        // UpgradeUI (Task 3.4): tap to pick one of 3 cards
+        if (this.input.justTapped) {
+          const p = this.input.getPos();
+          if (this.upgradeUI.handleTap(p.x, p.y)) {
+            this.state = 'playing';
+            this.timeScale = 1;
+            this.upgradeUI.hide();
           }
-          this.state = 'playing';
-          this.timeScale = 1;
+        }
+        // Fallback: auto-pick only if player hasn't tapped (tap hides UI + resets timer)
+        if (this.upgradeUI.visible) {
+          this._upgradeTimer = (this._upgradeTimer || 0) - dt;
+          if (this._upgradeTimer <= 0) {
+            const options = this._rollUpgrades();
+            if (options.length > 0) {
+              this._applyUpgrade(options[0]);
+            }
+            this.state = 'playing';
+            this.timeScale = 1;
+            this.upgradeUI.hide();
+          }
         }
         break;
 
@@ -213,19 +239,16 @@ class Game {
         if (this.input.justTapped) {
           const p = this.input.getPos();
 
-          // Upgrades button (bottom)
-          if (p.y > CONFIG.HEIGHT * 0.84) {
-            this.state = 'meta';
-          } else {
-            this.state = 'menu';
-            this._bgmStarted = false;
-            this._resetJuice();
-          }
+          // GameOverUI handles tap routing (meta vs restart)
+          this.gameOverUI.handleTap(p.x, p.y);
         }
         break;
 
       case 'meta':
-        if (this.input.justTapped) this.state = 'menu';
+        if (this.input.justTapped) {
+          const p = this.input.getPos();
+          this.metaScreen.handleTap(p.x, p.y);
+        }
         break;
     }
   }
@@ -273,7 +296,7 @@ class Game {
     this._updateMines(dt);
     this._applyGravityWell(dt);
 
-    this.scrap.update(dt, this.player, this.meta, this);
+    this.scrap.update(dt, this.player, this.metaProgression, this);
     this._checkScrapCollection();
 
     this.particles.update(dt);
@@ -463,7 +486,7 @@ class Game {
       if (d < this.player.radius + s.radius) {
         this.scrap.pool.release(s);
         if (s.isCore) {
-          this.meta.earnCores(1);
+          this.metaProgression.earnCores(1);
           this.stats.cores++;
           this.sfx.play('pickup');
           this.screenShake = Math.max(this.screenShake, 3);
@@ -566,6 +589,7 @@ class Game {
     this._upgradeTimer = 1.5;
     this.state = 'upgrade';
     this.timeScale = 0.3;
+    this.upgradeUI.show();
   }
 
   _rollUpgrades() {
@@ -628,7 +652,7 @@ class Game {
     this.particles.bossExplosion(bx, by);
     this.stats.bossesKilled++;
     this._tier2Unlocked = true;
-    this.meta.earnCores(3);
+    this.metaProgression.earnCores(3);
     this.scrap.spawn(bx, by, 15);
     this.scrap.spawn(bx, by, 3, true);
     this.waveComplete = true;
@@ -688,7 +712,7 @@ class Game {
     this.announcements = [];
     this._resetJuice();
 
-    this.player.reset(this.meta);
+    this.player.reset(this.metaProgression);
     this.enemies.pool.releaseAll();
     this.bullets.playerBullets.releaseAll();
     this.bullets.enemyBullets.releaseAll();
@@ -709,6 +733,8 @@ class Game {
     this.screenFlash = 0.5;
     this.chromaticIntensity = 8;
     this.particles.bossExplosion(this.player.x, this.player.y);
+    this.gameOverUI.show();
+    this.save.save();
   }
 
   _resetJuice() {
@@ -822,19 +848,7 @@ class Game {
     if (this.state === 'menu' || this.state === 'meta') {
       this.menuScreen.render(ctx, performance.now());
       if (this.state === 'meta') {
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#ff88ff';
-        ctx.shadowColor = '#ff44ff';
-        ctx.shadowBlur = 10;
-        ctx.font = 'bold 18px monospace';
-        ctx.fillText('◈ UPGRADES ◈', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.3);
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#ccc';
-        ctx.font = '12px monospace';
-        ctx.fillText('Coming in Task 3.3 (MetaProgression)', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.4);
-        ctx.fillText('Tap anywhere to go back', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.5);
+        this.metaScreen.render(ctx);
       }
       ctx.restore();
       return;
@@ -897,9 +911,12 @@ class Game {
     }
 
     // HUD
-    this._renderHUD(ctx);
+    this.hud.render();
 
-    // Announcements
+    // Upgrade overlay
+    if (this.state === 'upgrade') {
+      this.upgradeUI.render(ctx);
+    }
     for (const a of this.announcements) {
       const scaleA = a.timer > 1.5 ? 1 + (2 - a.timer) * 0.5 : 1;
       ctx.save();
@@ -916,25 +933,9 @@ class Game {
       ctx.restore();
     }
 
-    // Upgrade overlay (stub)
-    if (this.state === 'upgrade') {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#ffdd44';
-      ctx.shadowColor = '#ff8800';
-      ctx.shadowBlur = 15;
-      ctx.font = 'bold 20px monospace';
-      ctx.fillText('LEVEL UP!', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.4);
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#ccc';
-      ctx.font = '12px monospace';
-      ctx.fillText('Choosing...', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.5);
-    }
-
     // Game over overlay
     if (this.state === 'gameover') {
-      this._renderGameOver(ctx);
+      this.gameOverUI.render(ctx);
     }
 
     ctx.restore();

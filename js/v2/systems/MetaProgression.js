@@ -31,6 +31,10 @@ class MetaProgression {
     this.save.set('cores', n);
   }
 
+  earnCores(n) {
+    this.setCores(this.cores + n);
+  }
+
   getNode(id) {
     return this.nodes.find(n => n.id === id);
   }
@@ -44,7 +48,7 @@ class MetaProgression {
     if (!this.canAfford(node)) return false;
     const cost = node.coreCost[node.level];
     if (this.cores < cost) return false;
-    this.cores -= cost;
+    this.setCores(this.cores - cost);
     node.level++;
     this.save.set(`${node.id}_lvl`, node.level);
     this.save.set('cores', this.cores);
@@ -54,6 +58,18 @@ class MetaProgression {
   getUpgradeLevel(id) {
     const node = this.getNode(id);
     return node ? node.level : 0;
+  }
+
+  getAppliedModifiers() {
+    const mods = {};
+    if (this.getUpgradeLevel('hull')) mods.hull = this.getUpgradeLevel('hull');
+    if (this.getUpgradeLevel('speed')) mods.moveSpeed = 1 + this.getUpgradeLevel('speed') * 0.1;
+    if (this.getUpgradeLevel('damage')) mods.damageMult = 1 + this.getUpgradeLevel('damage') * 0.2;
+    if (this.getUpgradeLevel('fireRate')) mods.fireRate = 1 - this.getUpgradeLevel('fireRate') * 0.08;
+    if (this.getUpgradeLevel('projectiles')) mods.projectiles = this.getUpgradeLevel('projectiles');
+    if (this.getUpgradeLevel('cores')) mods.coresMult = 1 + this.getUpgradeLevel('cores') * 0.1;
+    if (this.getUpgradeLevel('score')) mods.scoreMult = 1 + this.getUpgradeLevel('score') * 0.15;
+    return mods;
   }
 
   _save() {
