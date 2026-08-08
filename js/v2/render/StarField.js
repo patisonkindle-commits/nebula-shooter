@@ -43,19 +43,21 @@ class StarField {
     this.nebulaOffset += dt * 4;
   }
 
-  render(ctx) {
+  render(ctx, sector) {
+    const palette = sector || CONFIG.SECTORS.default;
     // Deep space base gradient
     const grad = ctx.createLinearGradient(0, 0, 0, CONFIG.HEIGHT);
-    grad.addColorStop(0, '#060612');
-    grad.addColorStop(0.3, '#0a0820');
-    grad.addColorStop(0.6, '#0e0628');
-    grad.addColorStop(1, '#080812');
+    const g = palette.gradient;
+    grad.addColorStop(0, g[0]);
+    grad.addColorStop(0.3, g[1]);
+    grad.addColorStop(0.6, g[2]);
+    grad.addColorStop(1, g[3]);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
 
     // Nebula clouds (4 shifting orbs, additive-ish alpha)
     ctx.globalAlpha = 0.12;
-    const nebulaColors = ['#4411aa', '#2244cc', '#aa1188', '#1155aa'];
+    const nebulaColors = palette.nebula;
     for (let i = 0; i < 4; i++) {
       const cx = CONFIG.WIDTH * (0.2 + i * 0.2) + Math.sin(this.nebulaOffset * 0.08 + i * 1.7) * 70;
       const cy = CONFIG.HEIGHT * (0.15 + i * 0.23) + Math.cos(this.nebulaOffset * 0.06 + i * 2.3) * 50;

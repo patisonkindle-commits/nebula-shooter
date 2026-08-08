@@ -133,8 +133,25 @@ class SfxEngine {
     });
   }
 
+  sectorChange() {
+    this._play((ctx, bus) => {
+      const t = ctx.currentTime;
+      // Rising sweep — sector boundary sting
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(220, t);
+      osc.frequency.exponentialRampToValueAtTime(880, t + 0.35);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.25, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      osc.connect(g); g.connect(bus);
+      osc.start(t); osc.stop(t + 0.45);
+      ping(ctx, bus, 1320, t + 0.3, 0.25, 0.2);
+    });
+  }
+
   /** Available synth names — for wiring/dispatch. */
-  static NAMES = ['laser', 'hit', 'explosion', 'pickup', 'shield', 'bossRoar', 'click', 'revive', 'gameOver'];
+  static NAMES = ['laser', 'hit', 'explosion', 'pickup', 'shield', 'bossRoar', 'click', 'revive', 'gameOver', 'sectorChange'];
 
   /** Dispatch by name (event string), default noop. */
   play(name) {

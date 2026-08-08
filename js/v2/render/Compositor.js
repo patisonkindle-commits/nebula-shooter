@@ -45,8 +45,8 @@ class Compositor {
    * `sector` (optional) re-tints palette; Phase 4 wires this.
    */
   render(ctx, sector) {
-    this._renderBaseGradient(ctx);
-    this.nebula.render(ctx);
+    this._renderBaseGradient(ctx, sector);
+    this.nebula.render(ctx, sector);
     this.stars.render(ctx); // stars draw their own gradient too — see note
     if (this._vignette) {
       ctx.globalCompositeOperation = 'source-over';
@@ -57,12 +57,13 @@ class Compositor {
   }
 
   /** Apply a base gradient fill matching the nebula palette (cheap, once per frame). */
-  _renderBaseGradient(ctx) {
+  _renderBaseGradient(ctx, sector) {
+    const palette = sector ? (sector.gradient || CONFIG.SECTORS.default.gradient) : CONFIG.SECTORS.default.gradient;
     const g = ctx.createLinearGradient(0, 0, 0, CONFIG.HEIGHT);
-    g.addColorStop(0, '#060612');
-    g.addColorStop(0.3, '#0a0820');
-    g.addColorStop(0.6, '#0e0628');
-    g.addColorStop(1, '#080812');
+    g.addColorStop(0, palette[0]);
+    g.addColorStop(0.3, palette[1]);
+    g.addColorStop(0.6, palette[2]);
+    g.addColorStop(1, palette[3]);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
   }

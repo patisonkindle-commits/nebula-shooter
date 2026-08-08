@@ -3,7 +3,7 @@
 // Owns Input, Player, EnemyManager, BulletManager, ScrapManager, ParticleSystem,
 // StarField, AudioManager + SfxEngine + MusicEngine. Fixed-timestep loop.
 
-import { CONFIG } from './config.js';
+import { CONFIG, getSector } from './config.js';
 import { dist, rand } from './utils.js';
 import { Input } from './Input.js';
 import { SpatialGrid } from './SpatialGrid.js';
@@ -72,6 +72,8 @@ class Game {
     this._tier2Unlocked = false;
     this.timeScale = 1;
     this.waveEliteSpawned = false;
+    this.sector = getSector(0);       // current sector (starts Azure)
+    this.sectorBannerTimer = 0;       // >0 shows "— SECTOR —" banner
 
     // Stats
     this.stats = {
@@ -325,6 +327,7 @@ class Game {
       this.announcements[i].timer -= dt;
       if (this.announcements[i].timer <= 0) this.announcements.splice(i, 1);
     }
+    if (this.sectorBannerTimer > 0) this.sectorBannerTimer -= dt;
 
     if (this.xp >= this.xpToNext) {
       this._levelUp();
@@ -722,6 +725,15 @@ class Game {
 
     this.announcements.push({ text: `✦ WAVE ${this.wave} ✦`, timer: 2, y: CONFIG.HEIGHT * 0.25 });
 
+    // Sector rotation — banner + palette swap on sector change (waves 1, 11, 21, ...)
+    const nextSector = getSector(this.wave);
+    if (nextSector.key !== this.sector.key) {
+      this.sector = nextSector;
+      this.sectorBannerTimer = 2.5;
+      this.sfx.play('sectorChange');
+      this.screenFlash = 0.15;
+    }
+
     if ((CONFIG.BOSS_WAVE || 10) && this.wave === CONFIG.BOSS_WAVE) {
       this.enemiesThisWave = Math.floor(this.enemiesThisWave * 1.5);
     }
@@ -755,6 +767,8 @@ class Game {
     this._magnetBonus = 1;
     this._burstPending = [];
     this._upgradeTimer = 0;
+    this.sector = getSector(0);
+    this.sectorBannerTimer = 0;
     this.stats.enemiesKilled = 0;
     this.stats.totalDamageTaken = 0;
     this.stats.timeSurvived = 0;
@@ -910,7 +924,7 @@ class Game {
     }
 
     // Game render
-    this.starField.render(ctx);
+    this.starField.render(ctx, this.sector);
     this.scrap.render(ctx);
     this.enemies.render(ctx);
     this.bullets.renderPlayerBullets(ctx);
@@ -975,6 +989,25 @@ class Game {
     if (this.screenFlash > 0.01) {
       ctx.fillStyle = `rgba(255, 255, 255, ${this.screenFlash})`;
       ctx.fillRect(-10, -10, CONFIG.WIDTH + 20, CONFIG.HEIGHT + 20);
+    }
+
+    // Sector transition banner ("— CRIMSON TIDE —")
+    if (this.sectorBannerTimer > 0) {
+      const t = this.sectorBannerTimer;
+      const alpha = Math.min(1, t / 0.6) * 0.9;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = this.sector.accent;
+      ctx.shadowColor = this.sector.accent;
+      ctx.shadowBlur = 24;
+      ctx.font = 'bold 26px monospace';
+      ctx.fillText(`— ${this.sector.name} —`, CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.18);
+      ctx.shadowBlur = 0;
+      ctx.font = '10px monospace';
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillText('SECTOR BOUNDARY', CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.18 + 20);
+      ctx.restore();
     }
 
     // Damage red vignette

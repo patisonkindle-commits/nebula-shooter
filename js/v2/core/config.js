@@ -38,6 +38,14 @@ export const CONFIG = {
   ENEMIES_PER_WAVE: 6,
   SPAWN_INTERVAL: 0.8,
 
+  // Thematic sectors — rotate per 10 waves (wave 1-10 Azure, 11-20 Crimson, ...)
+  SECTORS: {
+    default: { name: 'AZURE DRIFT', tint: '#2244cc', accent: '#66ccff', gradient: ['#060612', '#0a0820', '#0e0628', '#080812'], nebula: ['#4411aa', '#2244cc', '#aa1188', '#1155aa'] },
+    crimson: { name: 'CRIMSON TIDE', tint: '#aa2244', accent: '#ff6644', gradient: ['#140406', '#220a08', '#2a0812', '#100608'], nebula: ['#882211', '#cc2244', '#aa1155', '#442211'] },
+    violet:  { name: 'VIOLET DEEP', tint: '#6622aa', accent: '#cc88ff', gradient: ['#0a0614', '#140a24', '#1a0a2c', '#0c0814'], nebula: ['#4411aa', '#8822cc', '#5511aa', '#331188'] },
+    oro:     { name: 'ORO BELT', tint: '#aa8822', accent: '#ffcc44', gradient: ['#140e04', '#221a08', '#2a2208', '#100c06'], nebula: ['#aa8822', '#ccaa44', '#887722', '#aa6600'] },
+  },
+
   // Enemy archetypes — balanced HP/Damage scaling tier
   SWARMER:   { hp: 1, speed: 120, radius: 10, score: 10, color: '#ff4466' },
   SNIPER:    { hp: 1, speed: 60,  radius: 10, score: 15, color: '#ffaa00' },
@@ -128,3 +136,10 @@ export const RENDER = {
 
 // v2 enemy archetypes — extended (Task 4.3)
 export const ENEMY_TYPES = ['swarmer','sniper','tank','kamikaze','blocker','vortex','minelayer','warp','shielder','disrupter','ripper'];
+
+// Sector lookup: wave → sector key (rotates every 10 waves, cycles 4)
+const SECTOR_ORDER = ['default', 'crimson', 'violet', 'oro'];
+export function getSector(wave) {
+  const idx = (Math.max(0, Math.floor((wave - 1) / 10))) % SECTOR_ORDER.length;
+  return { key: SECTOR_ORDER[idx], ...CONFIG.SECTORS[SECTOR_ORDER[idx]] };
+}
