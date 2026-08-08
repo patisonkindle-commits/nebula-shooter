@@ -70,8 +70,7 @@ function fireSeeker(player, bullets, enemies) {
   b.turnRate = 8;
   b.aoe = true;
   b.aoeRadius = 40;
-  b.aoeDamage = 7;
-  
+
   return b;
 }
 
@@ -103,18 +102,20 @@ function firePlasma(player, bullets, enemies) {
  * @param {object} player - Player entity
  * @param {object} bullets - Bullet manager
  * @param {array} enemies - Array of active enemies
+ * @param {object} game - Game (for damage + fx)
  */
-function fireTesla(player, bullets, enemies) {
+function fireTesla(player, bullets, enemies, game) {
   // Tesla doesn't fire a projectile - chains instantly
   const range = 150;
   const chainCount = 4;
-  
-  const hits = [];
-  let target = enemies[0];
+  const g = game || player.game;
+  const list = enemies && enemies.pool ? enemies.pool.active : (enemies || []);
+
+  let target = null;
   let dist = Infinity;
-  
+
   // Find nearest enemy
-  for (const e of enemies) {
+  for (const e of list) {
     if (!e.alive) continue;
     const d = Math.hypot(e.x - player.x, e.y - player.y);
     if (d < range && d < dist) {
@@ -122,58 +123,62 @@ function fireTesla(player, bullets, enemies) {
       target = e;
     }
   }
-  
+
   if (!target || !target.alive) return;
-  
+  if (!g) return;
+
   // Chain lightning visual
-  player.game.sfx.play('tesla');
-  player.game.particles.emit(target.x, target.y, 8, {
+  g.sfx && g.sfx.play('tesla');
+  g.particles.emit(target.x, target.y, 8, {
     speed: 60,
     color: '#ffff00',
     size: 2,
     life: 0.3
   });
-  
+
   // Damage first target
-  if (player.game.enemies.damageEnemy(target, 5, player.game)) {
-    player.game._onEnemyKilled(target);
+  const dmg = 5;
+  if (g.enemies.damageEnemy(target, dmg, g)) {
+    g._onEnemyKilled(target);
   }
-  
+
   // Chain to 3 more enemies
   let prevX = target.x;
   let prevY = target.y;
-  
+  let prevTarget = target;
+  let cur = target;
+
   for (let i = 0; i < chainCount; i++) {
     let nextTarget = null;
     let nextDist = 200;
-    
-    for (const e of enemies) {
+
+    for (const e of list) {
       if (!e.alive) continue;
-      if (e === target || e === prevTarget) continue;
+      if (e === cur || e === prevTarget) continue;
       const d = Math.hypot(e.x - prevX, e.y - prevY);
       if (d < nextDist) {
         nextDist = d;
         nextTarget = e;
       }
     }
-    
+
     if (nextTarget) {
-      player.game.sfx.play('tesla');
-      player.game.particles.emit(nextTarget.x, nextTarget.y, 5, {
+      g.sfx && g.sfx.play('tesla');
+      g.particles.emit(nextTarget.x, nextTarget.y, 5, {
         speed: 50,
         color: '#ffff00',
         size: 1.5,
         life: 0.2
       });
-      
-      if (player.game.enemies.damageEnemy(nextTarget, 5, player.game)) {
-        player.game._onEnemyKilled(nextTarget);
+
+      if (g.enemies.damageEnemy(nextTarget, dmg, g)) {
+        g._onEnemyKilled(nextTarget);
       }
-      
+
+      prevTarget = cur;
+      cur = nextTarget;
       prevX = nextTarget.x;
       prevY = nextTarget.y;
-      prevTarget = nextTarget;
-      target = nextTarget;
     } else {
       break;
     }
@@ -209,30 +214,20 @@ function fireLance(player, bullets, enemies) {
  * @param {object} player - Player entity
  * @param {object} bullets - Bullet manager
  * @param {array} enemies - Array of active enemies
+ * @param {object} game - Game (for tesla fx + damage)
  */
-export function fireWeapon(weaponId, player, bullets, enemies) {
+export function fireWeapon(weaponId, player, bullets, enemies, game) {
   switch (weaponId) {
     case 'seeker':
       return fireSeeker(player, bullets, enemies);
     case 'plasma':
       return firePlasma(player, bullets, enemies);
     case 'tesla':
-      return fireTesla(player, bullets, enemies);
+      return fireTesla(player, bullets, enemies, game);
     case 'lance':
       return fireLance(player, bullets, enemies);
     default:
-      // Base weapon - single shot
-      const b = bullets.playerBullets.acquire();
-      if (b) {
-        b.x = player.x;
-        b.y = player.y - player.radius;
-        b.vx = 0;
-        b.vy = -250;
-        b.radius = 3;
-        b.damage = player.ship.damage;
-        b.isEnemy = false;
-      }
-      return b;
+      return null;
   }
 }
 

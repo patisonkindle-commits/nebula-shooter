@@ -1,31 +1,31 @@
 // v2 ship archetypes (Task 4.1) — 4 ships with distinct stats + projectile types
 export const SHIPS = {
   vanguard: {
-    id: 'vanguard',
-    name: 'VANGUARD',
-    desc: 'Balanced starter ship',
-    color: '#22c1ff',
-    hp: 4000,      // base HP (meta hull stacks)
-    speed: 280,     // moveSpeed px/s
-    fireRate: 0.14, // seconds between shots
-    damage: 1,      // base damage mult
-    projectile: 'single', // single | twin | pulse
-    unlockCost: 0,  // 0 = free
-    unlocked: true,
-  },
-  interceptor: {
-    id: 'interceptor',
-    name: 'INTERCEPTOR',
-    desc: 'Twin-barrel rapid fire, squishy',
-    color: '#ff6b4a',
-    hp: 3000,
-    speed: 320,
-    fireRate: 0.10,
-    damage: 0.85,
-    projectile: 'twin',
-    unlockCost: 500,
-    unlocked: false,
-  },
+      id: 'vanguard',
+      name: 'GUNNER',
+      desc: 'Dual-wield rapid-fire, high fire rate',
+      color: '#ff6b35',
+      hp: 4000,
+      speed: 300,
+      fireRate: 0.08,
+      damage: 0.85,
+      projectile: 'twin',
+      unlockCost: 0,
+      unlocked: true,
+    },
+    interceptor: {
+      id: 'interceptor',
+      name: 'INTERCEPTOR',
+      desc: 'Standard single-shot blaster, base weapon',
+      color: '#4a9eff',
+      hp: 4000,
+      speed: 280,
+      fireRate: 0.14,
+      damage: 0.85,
+      projectile: 'single',
+      unlockCost: 500,
+      unlocked: false,
+    },
   pulsar: {
     id: 'pulsar',
     name: 'PULSAR',
@@ -36,6 +36,7 @@ export const SHIPS = {
     fireRate: 0.22,
     damage: 1.5,
     projectile: 'pulse',
+    weapon: 'plasma',
     unlockCost: 800,
     unlocked: false,
   },
@@ -49,6 +50,7 @@ export const SHIPS = {
     fireRate: 0.28,
     damage: 2.2,
     projectile: 'single',
+    weapon: 'lance',
     unlockCost: 1200,
     unlocked: false,
   },

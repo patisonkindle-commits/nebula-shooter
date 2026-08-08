@@ -287,7 +287,7 @@ class Game {
     this.damageFlash *= 0.92;
     if (this.damageFlash < 0.01) this.damageFlash = 0;
 
-    this.player.update(dt, this.input, this.bullets, this.enemies);
+    this.player.update(dt, this.input, this.bullets, this.enemies, this);
 
     // Engine trail
     if (this.player.alive) {
@@ -415,6 +415,23 @@ class Game {
             this.particles.emit(e.x, e.y, 4, {
               speed: 80, color: e.color, size: 2, life: 0.3
             });
+          }
+
+          // AoE explosion (seeker) — damage nearby enemies
+          if (b.aoe) {
+            const blasts = this.spatialGrid.query(b.x, b.y, b.aoeRadius);
+            for (const ae of blasts) {
+              if (!ae.alive || ae === e) continue;
+              const ad = dist(b, ae);
+              if (ad < b.aoeRadius + ae.radius) {
+                const ak = this.enemies.damageEnemy(ae, b.damage * 0.5, this);
+                if (ak) this._onEnemyKilled(ae);
+              }
+            }
+            this.particles.emit(b.x, b.y, 12, {
+              speed: 140, color: '#ff8844', size: 3, life: 0.4
+            });
+            if (this.screenShake !== undefined) this.screenShake = Math.max(this.screenShake, 4);
           }
 
           if (b.piercing && b.pierceRemaining > 0) {

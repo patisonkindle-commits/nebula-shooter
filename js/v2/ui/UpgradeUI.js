@@ -8,6 +8,10 @@ const UPGRADE_POOL = [
   { id: 'speed', label: '+10% Speed', desc: 'Move faster', icon: '💨' },
   { id: 'hull', label: '+1 Hull', desc: 'More HP', icon: '🛡️' },
   { id: 'special', label: 'Special Unlock', desc: 'Unlock ability', icon: '✨' },
+  { id: 'weapon_seeker', label: 'Seeker Missile', desc: 'Homing + AoE', icon: '🎯' },
+  { id: 'weapon_plasma', label: 'Plasma Cannon', desc: 'Heavy pierce', icon: '☄️' },
+  { id: 'weapon_tesla', label: 'Tesla Arc', desc: 'Chain lightning', icon: '⚡' },
+  { id: 'weapon_lance', label: 'Photon Lance', desc: 'Fast beam', icon: '🔫' },
 ];
 
 class UpgradeUI {

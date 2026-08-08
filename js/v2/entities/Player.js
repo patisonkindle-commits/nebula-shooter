@@ -4,6 +4,7 @@
 import { CONFIG } from '../core/config.js';
 import { clamp, dist } from '../core/utils.js';
 import { renderPlayer } from '../render/ShipRenderer.js';
+import { fireWeapon, getWeapon } from './weapons.js';
 
 class Player {
   constructor() {
@@ -40,6 +41,8 @@ class Player {
     this.orbitalLevel = 0;
     this.orbitals = [];
     this.orbitalAngle = 0;
+    this.weapon = 'base';
+    this.weaponCooldown = 0;
     this._lastUpgrade = null;
     this._upgradedThisFrame = false;
   }
@@ -81,12 +84,19 @@ class Player {
     this.orbitalLevel = 0;
     this.orbitals = [];
     this.orbitalAngle = 0;
+    this.weapon = 'base';
+    this.weaponCooldown = 0;
+    // Ship default weapon (Task 4.2) — pulsar→plasma, juggernaut→lance
+    if (s.weapon) {
+      this.weapon = s.weapon;
+      this.weaponCooldown = 0;
+    }
     this.trail = [];
     this._lastUpgrade = null;
     this._upgradedThisFrame = false;
   }
 
-  update(dt, input, bullets, enemies) {
+  update(dt, input, bullets, enemies, game) {
     if (!this.alive) return;
 
     // Movement — touch/mouse drag
@@ -131,6 +141,16 @@ class Player {
         this._fireBurst(bullets);
         this._fireRicochet(bullets);
         this._fireWave(bullets);
+      }
+    }
+
+    // Weapon fire (seeker/plasma/tesla/lance)
+    if (this.weapon && this.weapon !== 'base') {
+      this.weaponCooldown -= dt;
+      if (this.weaponCooldown <= 0) {
+        const w = getWeapon(this.weapon);
+        fireWeapon(this.weapon, this, bullets, enemies, game);
+        this.weaponCooldown = w.cooldown;
       }
     }
 
@@ -225,6 +245,13 @@ class Player {
       case 'speed': this.moveSpeed *= 1.1; this.speedMultiplier *= 1.1; break;
       case 'hull': this.maxHp += 5; this.hp += 5; break;
       case 'special': this.laserLevel = (this.laserLevel || 0) + 1; break;
+      case 'weapon_seeker':
+      case 'weapon_plasma':
+      case 'weapon_tesla':
+      case 'weapon_lance':
+        this.weapon = key.replace('weapon_', '');
+        this.weaponCooldown = 0;
+        break;
     }
   }
 
