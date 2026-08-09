@@ -66,6 +66,7 @@ class Game {
     // Run state
     this.wave = 0;
     this.waveTimer = 0;
+    this.bossTimer = null; // boss rush countdown (null = not boss rush wave)
     this.spawnTimer = 0;
     this.enemiesThisWave = 0;
     this.enemiesSpawnedThisWave = 0;
@@ -375,6 +376,23 @@ class Game {
     }
 
     const rules = this.mode ? this.mode.rules : null;
+
+    // Boss Rush countdown: start timer when boss wave begins
+    const bossWave = rules && rules.bossTimerPerWave && (rules.bossWaves || []).includes(this.wave);
+    if (bossWave && this.bossTimer === null && !this.enemies.bossSpawnedThisWave) {
+      this.bossTimer = rules.bossTimerPerWave;
+    }
+    // Reset once boss defeated (fresh timer next boss wave)
+    if (this.enemies.bossDefeated) this.bossTimer = null;
+    // Countdown only while boss alive/active
+    if (bossWave && this.bossTimer !== null && !this.waveComplete) {
+      this.bossTimer -= dt;
+      if (this.bossTimer <= 0) {
+        this.bossTimer = 0;
+        this._gameOver();
+        return;
+      }
+    }
 
     // Boss Rush: pending boss wave keeps arena open (no auto-complete)
     const pendingBossWave = rules && (rules.bossWaves || []).includes(this.wave) && !this.enemies.bossSpawnedThisWave;
@@ -719,6 +737,7 @@ class Game {
   }
 
   onBossDefeated(bx, by) {
+    this.bossTimer = null; // stop countdown — boss killed
     this.music.transition('playing');
     this.sfx.play('explosion');
     this.screenShake = 8;
@@ -746,6 +765,7 @@ class Game {
   _startNextWave() {
     this.wave++;
     this.waveTimer = 0;
+    this.bossTimer = null; // reset boss rush countdown per wave
     this.spawnTimer = 0;
     this.enemiesSpawnedThisWave = 0;
     this.enemies.bossSpawnedThisWave = false;
@@ -761,8 +781,10 @@ class Game {
     this.enemiesThisWave = (rules && rules.enemyTypes && rules.enemyTypes.length === 0) ? 0 : baseCount + (this.wave - 1) * 1.5;
     this.spawnInterval = Math.max(0.25, (rules ? rules.spawnInterval : 0.8) - this.wave * (rules ? rules.spawnIntervalDecay : 0.03));
 
-    // Mode caps: Endless & Challenge don't spawn bosses
-    if (rules && rules.bossWave === null) this.enemies.bossSpawnedThisWave = true;
+    // Mode caps: Endless & Challenge don't spawn bosses (no bossWaves list either)
+    if (rules && rules.bossWave === null && !(rules.bossWaves && rules.bossWaves.length > 0)) {
+      this.enemies.bossSpawnedThisWave = true;
+    }
 
     // Endless unlock: reached wave 15 in Classic
     if (this.mode && this.mode.id === 'classic' && this.wave >= 15) {
@@ -809,12 +831,14 @@ class Game {
   startGame(modeId) {
     this.mode = modeId ? initialModeState(modeId) : initialModeState(this.pendingMode || 'classic');
     const rules = this.mode.rules;
+    this.mode.scoreMult = rules.scoreMult ?? 1; // apply mode score multiplier (bossRush 1.5, challenge 2)
     this.score = 0;
     this.xp = 0;
     this.xpToNext = 20;
     this.level = 0;
     this.wave = 0;
     this.waveTimer = 0;
+    this.bossTimer = null;
     this.spawnTimer = 0;
     this.enemiesThisWave = 0;
     this.enemiesSpawnedThisWave = 0;

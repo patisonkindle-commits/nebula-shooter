@@ -13,6 +13,7 @@ export const MODES = {
       maxWave: null, // unlimited; waves 1-30+ in practice
       scoreMult: 1,
       bossCount: null, // 1 boss (at wave 10)
+      bossWaves: [10],
       enemiesPerWave: 6,
       spawnInterval: 0.8,
       spawnIntervalDecay: 0.03,
@@ -29,7 +30,7 @@ export const MODES = {
     rules: {
       bossWave: null, // pre-listed
       bossWaves: [5, 10, 15, 20, 25],
-      bossTimerPerWave: 20,
+      bossTimerPerWave: 30,
       maxWave: 25,
       scoreMult: 1.5,
       bossCount: 5, // 5 boss kills required

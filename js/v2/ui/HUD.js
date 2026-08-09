@@ -39,6 +39,20 @@ class HUD {
     ctx.font = '12px monospace';
     ctx.fillText(`SCORE ${this.game.score}`, CONFIG.WIDTH - 10, 38);
 
+    // Boss Rush countdown (top-center, pulsing when low)
+    if (this.game.bossTimer !== null && this.game.bossTimer !== undefined) {
+      const t = Math.max(0, this.game.bossTimer);
+      const urgent = t < 5;
+      const pulse = urgent ? 0.7 + 0.3 * Math.sin(performance.now() * 0.01) : 1;
+      ctx.textAlign = 'center';
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = urgent ? '#ff4444' : '#ffaa44';
+      ctx.font = 'bold 20px monospace';
+      ctx.fillText(`⏱ ${Math.ceil(t)}s`, CONFIG.WIDTH / 2, 28);
+      ctx.globalAlpha = 1;
+      ctx.textAlign = 'right';
+    }
+
     // Mute button (top-right, small)
     ctx.fillStyle = this.game.audio._enabled ? 'rgba(68,255,136,0.8)' : 'rgba(170,170,170,0.5)';
     ctx.font = '12px monospace';

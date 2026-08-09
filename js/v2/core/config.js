@@ -88,7 +88,7 @@ export const CONFIG = {
 
   // Bosses
   KOLOSS:       { wave: 5,   hpMultiplier: 1.2, radius: 38, color: '#ffcc33', score: 500, name: 'KOLOSS' },
-  UMBRA:        { wave: 25,  hpMultiplier: 3.5, radius: 44, color: '#8800cc', score: 2000, name: 'UMBRA' },
+  UMBRA:        { wave: 25,  hpMultiplier: 2.0, radius: 44, color: '#8800cc', score: 2000, name: 'UMBRA' },
   BOSS_WAVES:   [5, 10, 15, 20, 25],
 
   // Solar / abilities
