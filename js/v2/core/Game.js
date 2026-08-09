@@ -408,22 +408,15 @@ class Game {
   }
 
   _spawnEnemy() {
-    const modePool = this.mode && this.mode.rules && this.mode.rules.enemyTypes && this.mode.rules.enemyTypes.length > 0;
-    const types = modePool ? [...this.mode.rules.enemyTypes] : ['swarmer', 'swarmer', 'swarmer', 'sniper', 'tank', 'kamikaze', 'blocker'];
-    if (this.wave === 1) {
-      const snapshot = this.enemies.pool.active.map(e => e.type);
-      if (!snapshot.includes('sniper') && Math.random() < 0.5) types.push('sniper');
-      if (!snapshot.includes('kamikaze') && Math.random() < 0.4) types.push('kamikaze');
+    const modePool = this.mode && this.mode.rules && this.mode.rules.enemyTypes;
+    let types;
+    if (modePool && modePool.length > 0) {
+      types = [...modePool];
+    } else {
+      // BossRush has empty enemyTypes → no grunts (not a bug)
+      if (this.mode && this.mode.id === 'bossRush') return;
+      types = ['swarmer', 'swarmer', 'swarmer', 'sniper', 'tank', 'kamikaze', 'blocker'];
     }
-    if (this.wave >= 3) types.push('sniper', 'kamikaze', 'blocker', 'blocker');
-    if (this.wave >= 5) types.push('tank', 'tank');
-    if (this.wave >= 4) types.push('vortex', 'vortex');
-    if (this.wave >= 6) types.push('minelayer', 'minelayer');
-    if (this.wave >= 7) types.push('warp', 'warp');
-    if (this.wave >= 6) types.push('ripper');
-    if (this.wave >= 8) types.push('shielder', 'shielder');
-    if (this.wave >= 9) types.push('disrupter', 'disrupter');
-    if (this.wave >= 12) types.push('ripper', 'shielder');
     const type = types[Math.floor(Math.random() * types.length)];
     this.enemies.spawn(type, null, null, this.wave);
   }
