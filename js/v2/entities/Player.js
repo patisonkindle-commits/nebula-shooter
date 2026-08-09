@@ -54,8 +54,8 @@ class Player {
     this.y = CONFIG.HEIGHT * 0.75;
     this.vx = 0;
     this.vy = 0;
-    this.hp = (s.hp || CONFIG.PLAYER_MAX_HP) + (m.hull ? m.hull * 5 : 0);
-    this.maxHp = (s.hp || CONFIG.PLAYER_MAX_HP) + (m.hull ? m.hull * 5 : 0);
+    this.hp = (s.hp || CONFIG.PLAYER_MAX_HP) + (m.hull ? m.hull : 0);
+    this.maxHp = (s.hp || CONFIG.PLAYER_MAX_HP) + (m.hull ? m.hull : 0);
     this.shield = 0;
     this.maxShield = 0;
     if (m.shield) this.shield = this.maxShield = m.shield;
@@ -243,7 +243,7 @@ class Player {
       case 'fireRate': this.fireRate *= 0.85; break;
       case 'projectiles': this.spreadLevel++; break;
       case 'speed': this.moveSpeed *= 1.1; this.speedMultiplier *= 1.1; break;
-      case 'hull': this.maxHp += 5; this.hp += 5; break;
+      case 'hull': this.maxHp += 1; this.hp += 1; break;
       case 'special': this.laserLevel = (this.laserLevel || 0) + 1; break;
       case 'weapon_seeker':
       case 'weapon_plasma':
