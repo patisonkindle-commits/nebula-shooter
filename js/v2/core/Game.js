@@ -4,6 +4,7 @@
 // StarField, AudioManager + SfxEngine + MusicEngine. Fixed-timestep loop.
 
 import { CONFIG, getSector } from './config.js';
+import { MODES, getMode, initialModeState } from './modes.js';
 import { dist, rand } from './utils.js';
 import { Input } from './Input.js';
 import { SpatialGrid } from './SpatialGrid.js';
@@ -17,6 +18,7 @@ import { AudioManager } from '../systems/AudioManager.js';
 import { MusicEngine } from '../systems/MusicEngine.js';
 import { SfxEngine } from '../systems/SfxEngine.js';
 import { MenuScreen } from '../ui/Menu.js';
+import { ModeSelectScreen } from '../ui/ModeSelect.js';
 import { MetaScreen } from '../ui/MetaScreen.js';
 import { UpgradeUI } from '../ui/UpgradeUI.js';
 import { HUD } from '../ui/HUD.js';
@@ -47,6 +49,8 @@ class Game {
     this.music = new MusicEngine();
     this.sfx = new SfxEngine(this.audio);
     this.menuScreen = new MenuScreen();
+    this.modeSelect = new ModeSelectScreen(this);
+    this.pendingMode = 'classic';
 
     // Meta-progression (Task 3.4)
     this.save = new SaveManager();
@@ -192,7 +196,10 @@ class Game {
           const p = this.input.getPos();
           const idx = this.menuScreen.getHoveredButton(p.x, p.y);
           const action = this.menuScreen.handleTap(idx, this);
-          if (action === 'start') this.startGame();
+          if (action === 'start') {
+            this.state = 'modeselect';
+            this.sfx.play('click');
+          }
           else if (action === 'upgrades') {
             this.state = 'meta';
             this.metaScreen.show();
@@ -200,6 +207,23 @@ class Game {
           else if (action === 'hangar') {
             this.state = 'hangar';
             this.hangar.show();
+          }
+        }
+        break;
+
+      case 'modeselect':
+        this.starField.update(dt);
+        this.modeSelect.updateHover(this.input.mouseX, this.input.mouseY);
+        if (this.input.justTapped) {
+          const p = this.input.getPos();
+          const idx = this.modeSelect.buttonIndexAt(p.x, p.y);
+          const res = this.modeSelect.handleTap(idx);
+          if (res) {
+            if (res.action === 'back') this.state = 'menu';
+            else if (res.action === 'start') {
+              this.mode = initialModeState(res.id);
+              this.startGame(res.id);
+            }
           }
         }
         break;
@@ -350,7 +374,13 @@ class Game {
       return;
     }
 
-    if (this.enemiesSpawnedThisWave >= this.enemiesThisWave &&
+    const rules = this.mode ? this.mode.rules : null;
+
+    // Boss Rush: pending boss wave keeps arena open (no auto-complete)
+    const pendingBossWave = rules && (rules.bossWaves || []).includes(this.wave) && !this.enemies.bossSpawnedThisWave;
+
+    if (!pendingBossWave &&
+        this.enemiesSpawnedThisWave >= this.enemiesThisWave &&
         this.enemies.count === 0 && !this.enemies.bossActive) {
       this.waveComplete = true;
       this.transitionTimer = 2;
@@ -365,9 +395,9 @@ class Game {
       this.enemiesSpawnedThisWave++;
     }
 
-    if ((CONFIG.BOSS_WAVES || [10]).includes(this.wave) &&
+    if ((rules && rules.bossWaves ? rules.bossWaves : (CONFIG.BOSS_WAVES || [10])).includes(this.wave) &&
         !this.enemies.bossSpawnedThisWave &&
-        this.enemiesSpawnedThisWave >= this.enemiesThisWave * 0.5) {
+        (this.enemiesThisWave === 0 || this.enemiesSpawnedThisWave >= this.enemiesThisWave * 0.5)) {
       this.enemies.bossSpawnedThisWave = true;
       this.enemies.spawnBoss(this.wave);
       this.sfx.play('bossRoar');
@@ -378,7 +408,8 @@ class Game {
   }
 
   _spawnEnemy() {
-    const types = ['swarmer', 'swarmer', 'swarmer', 'sniper', 'tank', 'kamikaze', 'blocker'];
+    const modePool = this.mode && this.mode.rules && this.mode.rules.enemyTypes && this.mode.rules.enemyTypes.length > 0;
+    const types = modePool ? [...this.mode.rules.enemyTypes] : ['swarmer', 'swarmer', 'swarmer', 'sniper', 'tank', 'kamikaze', 'blocker'];
     if (this.wave === 1) {
       const snapshot = this.enemies.pool.active.map(e => e.type);
       if (!snapshot.includes('sniper') && Math.random() < 0.5) types.push('sniper');
@@ -583,7 +614,8 @@ class Game {
   }
 
   _onEnemyKilled(e) {
-    this.score += e.score;
+    const mult = this.mode && this.mode.scoreMult ? this.mode.scoreMult : 1;
+    this.score += Math.round(e.score * mult);
     this.stats.enemiesKilled++;
     this.sfx.play('explosion');
     this.screenShake = Math.max(this.screenShake, e.radius * 0.3);
@@ -702,6 +734,14 @@ class Game {
     this.particles.bossExplosion(bx, by);
     this.stats.bossesKilled++;
     this._tier2Unlocked = true;
+
+    // Unlock gates — Boss Rush unlocked by beating classic wave 10; Challenge by wave-20 boss
+    if (this.mode && this.mode.id === 'classic') {
+      if (this.wave === 10) this.save.set('unlocked_boss10Killed', true);
+    }
+    if (this.wave >= 20) this.save.set('unlocked_boss20Killed', true);
+    this.mode.bossKills = (this.mode.bossKills || 0) + 1;
+
     this.metaProgression.earnCores(3);
     this.scrap.spawn(bx, by, 15);
     this.scrap.spawn(bx, by, 3, true);
@@ -720,8 +760,21 @@ class Game {
     this.waveComplete = false;
     this.waveEliteSpawned = false;
 
-    this.enemiesThisWave = (CONFIG.ENEMIES_PER_WAVE || 6) + Math.floor(this.wave * 1.5);
-    this.spawnInterval = Math.max(0.25, 0.8 - this.wave * 0.03);
+    const rules = this.mode ? this.mode.rules : null;
+
+    // Mode-specific enemy count + spawn interval decay
+    const baseCount = rules ? (rules.enemiesPerWave ?? CONFIG.ENEMIES_PER_WAVE) : (CONFIG.ENEMIES_PER_WAVE || 6);
+    // Boss Rush rules.enemyTypes=[] → pure boss arena, zero grunts
+    this.enemiesThisWave = (rules && rules.enemyTypes && rules.enemyTypes.length === 0) ? 0 : baseCount + (this.wave - 1) * 1.5;
+    this.spawnInterval = Math.max(0.25, (rules ? rules.spawnInterval : 0.8) - this.wave * (rules ? rules.spawnIntervalDecay : 0.03));
+
+    // Mode caps: Endless & Challenge don't spawn bosses
+    if (rules && rules.bossWave === null) this.enemies.bossSpawnedThisWave = true;
+
+    // Endless unlock: reached wave 15 in Classic
+    if (this.mode && this.mode.id === 'classic' && this.wave >= 15) {
+      this.save.set('unlocked_wave15', true);
+    }
 
     this.announcements.push({ text: `✦ WAVE ${this.wave} ✦`, timer: 2, y: CONFIG.HEIGHT * 0.25 });
 
@@ -738,6 +791,19 @@ class Game {
       this.enemiesThisWave = Math.floor(this.enemiesThisWave * 1.5);
     }
 
+    // Score multiplier per N waves (Endless)
+    if (rules && rules.scoreMultIncrement) {
+      this.mode.scoreMult = 1 + rules.scoreMultIncrement * Math.floor(this.wave / rules.scoreMultPerXWave);
+    }
+
+    // Wave cap reached → end run as victory
+    if (rules && rules.maxWave && this.wave >= rules.maxWave) {
+      this.waveComplete = true;
+      this.transitionTimer = 0;
+      this._victory();
+      return;
+    }
+
     this.music.updateIntensity(this.wave, false);
   }
 
@@ -747,7 +813,9 @@ class Game {
     return SHIPS[id] || SHIPS.vanguard;
   }
 
-  startGame() {
+  startGame(modeId) {
+    this.mode = modeId ? initialModeState(modeId) : initialModeState(this.pendingMode || 'classic');
+    const rules = this.mode.rules;
     this.score = 0;
     this.xp = 0;
     this.xpToNext = 20;
@@ -779,6 +847,10 @@ class Game {
     this.announcements = [];
     this._resetJuice();
 
+    // Mode-scoped overrides
+    this.spawnInterval = rules.spawnInterval ?? CONFIG.SPAWN_INTERVAL;
+    this.enemiesThisWave = rules.enemiesPerWave ?? CONFIG.ENEMIES_PER_WAVE;
+
     this.player.reset(this.metaProgression, this.selectedShip());
     this.enemies.pool.releaseAll();
     this.bullets.playerBullets.releaseAll();
@@ -801,6 +873,25 @@ class Game {
     this.chromaticIntensity = 8;
     this.particles.bossExplosion(this.player.x, this.player.y);
     this.gameOverUI.show();
+    this._saveHighScore();
+    this.save.save();
+  }
+
+  /** Record per-mode high score if beaten */
+  _saveHighScore() {
+    if (!this.mode) return;
+    const key = 'hs_' + this.mode.id;
+    const prev = this.save.get(key, 0) || 0;
+    if (this.score > prev) this.save.set(key, this.score);
+  }
+
+  _victory() {
+    this.state = 'gameover';
+    this.music.transition('menu');
+    this.sfx.play('gameOver');
+    this.screenFlash = 0.4;
+    this.gameOverUI.show(true); // victory flag
+    this._saveHighScore();
     this.save.save();
   }
 
@@ -912,9 +1003,11 @@ class Game {
       ctx.translate(shakeX, shakeY);
     }
 
-    if (this.state === 'menu' || this.state === 'meta' || this.state === 'hangar') {
+    if (this.state === 'menu' || this.state === 'modeselect' || this.state === 'meta' || this.state === 'hangar') {
       this.menuScreen.render(ctx, performance.now());
-      if (this.state === 'meta') {
+      if (this.state === 'modeselect') {
+        this.modeSelect.render(ctx);
+      } else if (this.state === 'meta') {
         this.metaScreen.render(ctx);
       } else if (this.state === 'hangar') {
         this.hangar.render(ctx);
