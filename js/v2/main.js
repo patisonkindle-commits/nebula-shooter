@@ -5,7 +5,7 @@ import Game from './core/Game.js';
 import { CONFIG } from './core/config.js';
 
 const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d', { willReadFrequently: false });
+const ctx = canvas.getContext('2d');
 
 // ── Global error guard ──
 window.addEventListener('error', function(e) {
