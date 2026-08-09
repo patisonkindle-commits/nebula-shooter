@@ -2,28 +2,36 @@
 
 ## State at handoff
 - **Branch**: `v2` (off `android-playstore`)
-- **Plan**: Phase 4.7 Balance Tuning in progress
-- **Last commit**: `0235584` — v2: balance — ships HP 3/2/4/6, hull +1/level
+- **Plan**: Phase 4.7 Balance Tuning — **COMPLETED**
+- **Last commit**: `95713b1` — Phase 4.7: Boss Rush timer, score multiplier, classic boss restriction, balance tuning
 
 ## Phase 4.7 Status
 ### Completed
 - ✅ Enemy composition fix — use `enemyTypes` from `modes.js`, remove hardcoded list
 - ✅ Ship HP values — fixed from 4000/4000/5000/7000 to 3/2/4/6 (v1 parity)
 - ✅ Hull upgrade scaling — +1 HP per level (v1 parity)
+- ✅ Boss Rush timer — 30s countdown per wave, gameover on expiry, resets on boss kill
+- ✅ Boss Rush score multiplier — 1.5x applied in `_onEnemyKilled`
+- ✅ Classic boss wave restriction — wave 10 only (1 boss max), no 5/15/20/25
+- ✅ Balance pass — UMBRA hpMult 3.5→2.0, timer 20→30s (wave 25 killable ~28s)
+- ✅ Browser playtest — all verified live (timer gameover, multiplier math, boss restriction)
+- ✅ Git commit + push — 95713b1 pushed to origin/v2
 
-### In Progress (tool call budget hit)
-- ❌ Boss Rush timer (20s countdown) — `bossTimerPerWave: 20` in `modes.js:32` unused
-- ❌ Boss Rush 2x score multiplier — per plan spec
-- ❌ Classic boss wave restriction — `Game.js:783` still uses `CONFIG.BOSS_WAVES`
-- ❌ Balance pass (HP scaling, score curves)
+### Bug Fixes in 4.7
+- **Timer not wired** — `modes.js:32` `bossTimerPerWave: 20` unused → now used in `_updateWaves`, gameover at 0
+- **Score multiplier undefined** — `initialModeState` returned mode without `scoreMult` → set in `startGame` from `rules.scoreMult`
+- **Classic bossWaves fallback** — classic missing `bossWaves` + `enemiesPerWave` → fell back to `CONFIG.BOSS_WAVES = [5,10,15,20,25]` (5 bosses) → fixed in modes.js
+- **BossRush bossSpawnedThisWave blocked** — `_startNextWave` line 765: `rules.bossWave === null` forced `bossSpawnedThisWave = true` → blocked timer init AND boss spawn. Fixed: check both `bossWave` and `bossWaves` list existence.
+- **HUD timer display** — added pulsing countdown (orange 30-5s, red 5-0s) top-center when active
 
-## Known Issues
-1. **Boss Rush timer not implemented** — `modes.js:32` defines `bossTimerPerWave: 20` but Game.js doesn't use it
-2. **Boss Rush score multiplier** — `scoreMult: 1.5` in modes.js not applied to `this.score`
-3. **Classic boss waves** — `CONFIG.BOSS_WAVES = [5, 10, 15, 20, 25]` spawns 5 bosses; plan says wave 10 only
-4. **Enemy composition** — `_spawnEnemy()` hardcoded list; should use `this.mode.rules.enemyTypes`
-5. **Ship HP mismatch** — ships.js had 4000/4000/5000/7000 HP (fixed to 3/2/4/6)
-6. **Hull upgrade** — +5 HP per level (fixed to +1)
+## Known Issues (Resolved in 4.7)
+1. ~~**Boss Rush timer not implemented**~~ — ✅ Now 30s countdown with gameover on expiry
+2. ~~**Boss Rush score multiplier**~~ — ✅ 1.5x applied in `_onEnemyKilled`
+3. ~~**Classic boss waves**~~ — ✅ Restricted to wave 10 only (1 boss max)
+4. ~~**Enemy composition**~~ — ✅ Use `enemyTypes` from `modes.js` per mode
+5. ~~**Ship HP mismatch**~~ — ✅ Fixed to 3/2/4/6
+6. ~~**Hull upgrade**~~ — ✅ +1 per level
+7. **BossRush bossSpawnedThisWave blocked** — ✅ Fixed: `_startNextWave` now checks both `bossWave` and `bossWaves` list
 
 ## Module Inventory (34 files)
 ```
@@ -39,7 +47,7 @@ js/v2/
 │   ├── ModeSelect.js (4k) — 4 buttons, unlock gating, per-mode hs
 │   ├── GameOverUI.js (3k) — handleTap → startGame
 │   ├── Menu.js (15k) — updateHover, handleTap, render, startGame
-│   └── HUD.js (6k) — health/score/wave displays
+│   └── HUD.js (6k) — health/score/wave/timer displays
 ├── systems/
 │   ├── MetaProgression.js (11k) — earnCores, levelUp, save/load
 │   ├── SaveManager.js (1k) — localStorage, get/set/remove
@@ -89,6 +97,7 @@ js/v2/
 | `js/v2/ui/Menu.js` | 15k | Main menu, hover, tap handling |
 | `js/v2/ui/ModeSelect.js` | 4k | 4 buttons, unlock gating, per-mode hs |
 | `js/v2/systems/MetaProgression.js` | 11k | `earnCores(amount)`, `levelUp()`, save/load |
+| `js/v2/ui/HUD.js` | 6k | health/score/wave/timer displays (updated 4.7) |
 
 ## Browser Test Notes
 - Served via `python3 -m http.server 8000` in `/home/patison/nebula-shooter`
@@ -97,16 +106,24 @@ js/v2/
 - ModeSelect: `buttonRects` array, `handleTap(mx,my)` → returns `{action: 'start'|'back', id}`
 - Boss rush spawn at wave 5: KolossLite, 94 HP, `bossActive=true`
 - All unlock flags: `unlocked_boss10Killed`, `unlocked_boss20Killed`, `unlocked_wave15`
+- Timer display: pulsing orange 30-5s, red 5-0s, top-center
+- BossRush score 1.5x verified: boss score 500 → 750 per kill
 
-## What's Next
-1. **Boss Rush timer** — 20s countdown per wave (use `bossTimerPerWave` from modes.js)
-2. **Boss Rush score multiplier** — 2x per boss defeated
-3. **Classic boss waves** — restrict to wave 10 only (remove wave 5/15/20/25)
-4. **Balance pass** — HP scaling, score curves, enemy tuning
-5. **Visual polish** — mode-specific title screens, victory effects
+## What's Next (Post-4.7)
+1. **Boss Rush mode polish** — mode title screen, victory effect on wave 25
+2. **Challenge mode polish** — mode title screen, win condition on score target
+3. **Endless mode polish** — mode title screen, infinite waves with scaling
+4. **Visual polish** — ship upgrades, death effects, level-up glow
+5. **Audio polish** — mode-specific BGM, upgrade SFX, boss theme
+6. **Mobile touch** — tap to move, auto-fire, gesture menu
+7. **Performance** — spatial grid for collision, object pooling
+8. **Content expansion** — ship variants, weapon types, boss abilities
+9. **Leaderboard** — local hs, shareable scores, online if needed
+10. **Game feel** — hitstop, particles, screen-shake, music sync
 
 ## Commit History (Last 5)
 ```
+95713b1 Phase 4.7: Boss Rush timer, score multiplier, classic boss restriction, balance tuning
 0235584 v2: balance — ships HP 3/2/4/6, hull +1/level, player dmg matches enemy 1
 18f9326 v2: fix enemy composition — use enemyTypes from modes.js per mode, remove hardcoded wave gates (BossRush no grunts)
 154ba26 docs: add handoff.md — module inventory, game flow, bug list, next steps
