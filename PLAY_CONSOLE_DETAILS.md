@@ -5,8 +5,8 @@
 |-------|-------|
 | **App Name** | Nebula — Space Shooter |
 | **Package Name** | `com.patison.nebula` |
-| **Version Code** | `4` |
-| **Version Name** | `1.14` |
+| **Version Code** | `11` |
+| **Version Name** | `2.0` |
 | **Min SDK** | API 23 (Android 6.0) |
 | **Target SDK** | API 35 (Android 15) |
 
@@ -21,7 +21,7 @@
 
 ### 2️⃣ APK (Signed Universal) — **For testing**
 - **File:** `android/app/build/outputs/apk/release/app-release.apk`
-- **Size:** ~6.7 MB
+- **Size:** ~7.1 MB
 - **Use:** Sideload to Android devices for pre-release testing
 
 ---
@@ -67,9 +67,13 @@
 ---
 
 ## Key Features (for Store Listing)
-- **One-touch arcade shooter** with wave-based enemies
+- **One-touch arcade shooter** — v2.0 rewrite: 4 selectable ships (Vanguard/Interceptor/Pulsar/Juggernaut), 4 weapon systems (seeker/plasma/tesla/lance), 11 enemy archetypes + 2 end-bosses (Koloss, Umbra)
+- **4 game modes** — Classic, Boss Rush, Endless, Challenge (unlock-gated)
+- **4 thematic sectors** — Azure Drift, Crimson Tide, Violet Deep, Oro Belt
 - **Upgrade system** — collect scrap & cores, unlock power-ups mid-run
-- **Meta progression** — permanent upgrades across runs
+- **Meta progression** — permanent upgrades across runs, ship unlocks
+- **Procedural audio** — WebAudio music engine + 9 synth SFX (no asset files)
+- **Visual overhaul** — bloom/glow pipeline, layered nebula parallax, vector ship art
 - **AdMob** — Banner (bottom) + Interstitial (between runs) + Rewarded (revive)
 - **Offline play** — no internet connection required (ads limited when offline)
 
