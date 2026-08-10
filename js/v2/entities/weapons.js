@@ -55,7 +55,7 @@ export const WEAPONS = {
  * @param {object} bullets - Bullet manager
  * @param {array} enemies - Array of active enemies
  */
-function fireSeeker(player, bullets, enemies) {
+function fireSeeker(player, bullets, enemies, game) {
   const b = bullets.playerBullets.acquire();
   if (!b) return;
   
@@ -64,7 +64,7 @@ function fireSeeker(player, bullets, enemies) {
   b.vx = 0;
   b.vy = -200;
   b.radius = 4;
-  b.damage = 15;
+  b.damage = 15 + (game && game.wave ? game.wave * 0.5 : 0);
   b.isEnemy = false;
   b.homing = true;
   b.turnRate = 8;
@@ -80,7 +80,7 @@ function fireSeeker(player, bullets, enemies) {
  * @param {object} bullets - Bullet manager
  * @param {array} enemies - Array of active enemies
  */
-function firePlasma(player, bullets, enemies) {
+function firePlasma(player, bullets, enemies, game) {
   const b = bullets.playerBullets.acquire();
   if (!b) return;
   
@@ -89,7 +89,7 @@ function firePlasma(player, bullets, enemies) {
   b.vx = 0;
   b.vy = -120;
   b.radius = 5;
-  b.damage = 25;
+  b.damage = 25 + (game && game.wave ? game.wave : 0);
   b.isEnemy = false;
   b.piercing = 1;
   b.pierceRemaining = 1;
@@ -137,7 +137,7 @@ function fireTesla(player, bullets, enemies, game) {
   });
 
   // Damage first target
-  const dmg = 5;
+  const dmg = 5 + (game && game.wave ? game.wave * 0.3 : 0);
   if (g.enemies.damageEnemy(target, dmg, g)) {
     g._onEnemyKilled(target);
   }
@@ -191,7 +191,7 @@ function fireTesla(player, bullets, enemies, game) {
  * @param {object} bullets - Bullet manager
  * @param {array} enemies - Array of active enemies
  */
-function fireLance(player, bullets, enemies) {
+function fireLance(player, bullets, enemies, game) {
   const b = bullets.playerBullets.acquire();
   if (!b) return;
   
@@ -200,7 +200,7 @@ function fireLance(player, bullets, enemies) {
   b.vx = 0;
   b.vy = -500;
   b.radius = 2;
-  b.damage = 8;
+  b.damage = 8 + (game && game.wave ? game.wave * 0.8 : 0);
   b.isEnemy = false;
   b.piercing = 3;
   b.pierceRemaining = 3;
@@ -219,13 +219,13 @@ function fireLance(player, bullets, enemies) {
 export function fireWeapon(weaponId, player, bullets, enemies, game) {
   switch (weaponId) {
     case 'seeker':
-      return fireSeeker(player, bullets, enemies);
+      return fireSeeker(player, bullets, enemies, game);
     case 'plasma':
-      return firePlasma(player, bullets, enemies);
+      return firePlasma(player, bullets, enemies, game);
     case 'tesla':
       return fireTesla(player, bullets, enemies, game);
     case 'lance':
-      return fireLance(player, bullets, enemies);
+      return fireLance(player, bullets, enemies, game);
     default:
       return null;
   }

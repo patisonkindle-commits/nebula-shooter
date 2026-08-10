@@ -17,7 +17,10 @@ export const MODES = {
       enemiesPerWave: 6,
       spawnInterval: 0.8,
       spawnIntervalDecay: 0.03,
-      enemyTypes: ['swarmer','swarmer','swarmer','sniper','tank','kamikaze','blocker','vortex','minelayer','warp','shielder','disrupter','ripper'],
+      // Early game (w1-10): no tanks/vortex
+      enemyTypesEarly: ['swarmer','swarmer','swarmer','sniper','sniper','minelayer'],
+      // Late game (w11+): add heavy archetypes
+      enemyTypesLate: ['swarmer','swarmer','sniper','tank','tank','blocker','shielder','minelayer','disrupter'],
       unlockFrom: null, // always available
       unlockAt: null,   // unlocks Boss Rush at wave 10 (boss dies)
     },
@@ -38,6 +41,7 @@ export const MODES = {
       spawnInterval: null,
       spawnIntervalDecay: 0,
       enemyTypes: [],
+      bossHpMultiplier: 0.75, // solo boss fights are easier (was 1.0)
       unlockFrom: 'classic',
       unlockAt: 'boss10Killed', // flag set when boss dies in classic
     },
@@ -57,7 +61,7 @@ export const MODES = {
       enemiesPerWave: 8,
       spawnInterval: 0.6,
       spawnIntervalDecay: 0.04,
-      enemyTypes: ['swarmer','swarmer','sniper','tank','kamikaze','blocker','vortex','minelayer','warp','shielder','disrupter','ripper','warp','warp'],
+      enemyTypes: ['swarmer','swarmer','ripper','kamikaze','blocker','vortex','minelayer','warp','shielder','disrupter'],
       unlockFrom: 'classic',
       unlockAt: 'wave15', // flag set when wave 15 starts
     },
@@ -66,18 +70,25 @@ export const MODES = {
   challenge: {
     id: 'challenge',
     name: 'CHALLENGE',
-    desc: 'Survive 20 escalating waves.\nNo bosses. Pure difficulty.\nUnlock: defeat the wave 20 boss.',
+    desc: 'Survive 20 escalating waves.\n4 phases, no bosses.\nUnlock: defeat the wave 20 boss.',
     rules: {
       bossWave: null, // no bosses in game mode
       maxWave: 20,
-      scoreMult: 2,
+      scoreMult: 3,
       bossCount: 0,
       enemiesPerWave: 10,
       spawnInterval: 0.5,
       spawnIntervalDecay: 0.04,
-      enemyTypes: ['swarmer','swarmer','swarmer','sniper','tank','kamikaze','blocker','vortex','minelayer','warp','shielder','disrupter','ripper'],
+      enemyTypes: ['swarmer','swarmer','swarmer','sniper','kamikaze','blocker','minelayer','warp','shielder','disrupter'],
       unlockFrom: 'bossRush',
       unlockAt: 'boss20Killed', // flag set when boss 20 dies (in classic, triggers unlock here)
+      // Escalating phases (Challenge-specific)
+      challengePhases: [
+        { minWave: 1, maxWave: 5, enemyMult: 1, noScrap: false },
+        { minWave: 6, maxWave: 10, enemyMult: 1.5, noScrap: true },
+        { minWave: 11, maxWave: 15, enemyMult: 2, shielders: true },
+        { minWave: 16, maxWave: 20, enemyMult: 2.5, bossEvery: 2 },
+      ],
     },
     unlockThreshold: { mode: 'classic', flag: 'boss20Killed' },
   },

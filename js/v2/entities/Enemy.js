@@ -96,10 +96,12 @@ export class EnemyManager {
     else if (wave >= KOLOSS.wave && wave !== 10) bossKind = 'kolossLite';
 
     const waveScale = wave ? (1 + CONFIG.WAVE_HP_SCALE * wave) : 1;
+    // Boss Rush solo encounters: 0.75× HP (mode rule), never below the classic floor
+    const modeMult = (this.mode && this.mode.rules && this.mode.rules.bossHpMultiplier) || 1;
     e.type = 'boss';
     e.bossKind = bossKind;
     e.bossName = (bossKind === 'classic') ? 'OVERMIND' : (bossKind === 'kolossLite' ? CONFIG.KOLOSS.name : CONFIG[bossKind.toUpperCase()].name);
-    e.hp = Math.round((bossKind === 'umbra' ? CONFIG.UMBRA.hpMultiplier : bossKind.startsWith('koloss') ? CONFIG.KOLOSS.hpMultiplier : 1) * CONFIG.BOSS_HP * waveScale);
+    e.hp = Math.max(CONFIG.BOSS_HP, Math.round((bossKind === 'umbra' ? CONFIG.UMBRA.hpMultiplier : bossKind.startsWith('koloss') ? CONFIG.KOLOSS.hpMultiplier : 1) * CONFIG.BOSS_HP * waveScale * modeMult));
     e.maxHp = e.hp;
     e.radius = bossKind === 'umbra' ? CONFIG.UMBRA.radius : bossKind.startsWith('koloss') ? CONFIG.KOLOSS.radius : CONFIG.BOSS_RADIUS;
     e.speed = CONFIG.BOSS_SPEED;

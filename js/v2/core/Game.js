@@ -403,7 +403,7 @@ class Game {
       this.waveComplete = true;
       this.transitionTimer = 2;
       const bonus = 3 + Math.floor(this.wave * 1.5);
-      this.scrap.spawn(CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2, bonus);
+      if (!this._noScrap) this.scrap.spawn(CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2, bonus);
     }
 
     this.spawnTimer -= dt;
@@ -426,16 +426,24 @@ class Game {
   }
 
   _spawnEnemy() {
-    const modePool = this.mode && this.mode.rules && this.mode.rules.enemyTypes;
+    const rules = this.mode && this.mode.rules;
     let types;
-    if (modePool && modePool.length > 0) {
-      types = [...modePool];
+    // Classic: easy pool waves 1-10, heavy pool 11+
+    if (rules && this.wave <= 10 && rules.enemyTypesEarly && rules.enemyTypesEarly.length) {
+      types = [...rules.enemyTypesEarly];
+    } else if (rules && this.wave > 10 && rules.enemyTypesLate && rules.enemyTypesLate.length) {
+      types = [...rules.enemyTypesLate];
+    } else if (rules && rules.enemyTypes && rules.enemyTypes.length > 0) {
+      types = [...rules.enemyTypes];
     } else {
       // BossRush has empty enemyTypes → no grunts (not a bug)
       if (this.mode && this.mode.id === 'bossRush') return;
       types = ['swarmer', 'swarmer', 'swarmer', 'sniper', 'tank', 'kamikaze', 'blocker'];
     }
-    const type = types[Math.floor(Math.random() * types.length)];
+    let type = types[Math.floor(Math.random() * types.length)];
+    // Challenge phase 3 (waves 11-15): shielder-heavy
+    const phase = rules && rules.challengePhases && rules.challengePhases.find(p => this.wave >= p.minWave && this.wave <= p.maxWave);
+    if (phase && phase.shielders && Math.random() < 0.3) type = 'shielder';
     this.enemies.spawn(type, null, null, this.wave);
   }
 
@@ -516,7 +524,7 @@ class Game {
         if (!e.alive) continue;
         if (e.y > cy || e.y < cy - beamLength) continue;
         if (Math.abs(e.x - cx) < beamWidth + e.radius) {
-          const killed = this.enemies.damageEnemy(e, 0.2, this);
+          const killed = this.enemies.damageEnemy(e, 0.2 * (1 + this.wave * 0.05) * Math.max(1, this.player.laserLevel), this);
           if (killed) this._onEnemyKilled(e);
         }
       }
@@ -639,13 +647,13 @@ class Game {
     this.particles.explosion(e.x, e.y, scale);
 
     const scrapCount = e.isBoss ? 15 : (e.type === 'tank' ? 4 : 2);
-    this.scrap.spawn(e.x, e.y, scrapCount);
+    if (!this._noScrap) this.scrap.spawn(e.x, e.y, scrapCount);
 
     const coreChance = (CONFIG.CORE_CHANCE || 0.06) + this.coreDropBonus + this.wave * 0.02;
-    if (Math.random() < coreChance) {
+    if (!this._noScrap && Math.random() < coreChance) {
       this.scrap.spawn(e.x, e.y, 1, true);
     }
-    if (e.type === 'tank' && Math.random() < 0.3) {
+    if (!this._noScrap && e.type === 'tank' && Math.random() < 0.3) {
       this.scrap.spawn(e.x, e.y, 1, true);
     }
   }
@@ -724,7 +732,7 @@ class Game {
       case 'ricochet': p.ricochetLevel++; break;
       case 'wave': p.waveLevel = 1; break;
       case 'fireRate': p.fireRate *= 0.75; break;
-      case 'damage': p.damageMultiplier *= 1.3; break;
+      case 'damage': p.damageMultiplier *= 1.5; break;
       case 'shield': p.shield++; p.maxShield++; break;
       case 'moveSpeed': p.speedMultiplier *= 1.2; p.moveSpeed *= 1.2; break;
       case 'magnet': this._magnetBonus *= 1.4; break;
@@ -755,8 +763,10 @@ class Game {
     this.mode.bossKills = (this.mode.bossKills || 0) + 1;
 
     this.metaProgression.earnCores(3);
-    this.scrap.spawn(bx, by, 15);
-    this.scrap.spawn(bx, by, 3, true);
+    if (!this._noScrap) {
+      this.scrap.spawn(bx, by, 15);
+      this.scrap.spawn(bx, by, 3, true);
+    }
     this.waveComplete = true;
     this.transitionTimer = 3;
     this.coreDropBonus += 0.03;
@@ -778,8 +788,23 @@ class Game {
     // Mode-specific enemy count + spawn interval decay
     const baseCount = rules ? (rules.enemiesPerWave ?? CONFIG.ENEMIES_PER_WAVE) : (CONFIG.ENEMIES_PER_WAVE || 6);
     // Boss Rush rules.enemyTypes=[] → pure boss arena, zero grunts
-    this.enemiesThisWave = (rules && rules.enemyTypes && rules.enemyTypes.length === 0) ? 0 : baseCount + (this.wave - 1) * 1.5;
-    this.spawnInterval = Math.max(0.25, (rules ? rules.spawnInterval : 0.8) - this.wave * (rules ? rules.spawnIntervalDecay : 0.03));
+    this.enemiesThisWave = (rules && rules.enemyTypes && rules.enemyTypes.length === 0) ? 0 : Math.min(40, baseCount + (this.wave - 1) * 1.5);
+    // Gentle spawn curve — no linear cliff; floor 0.28s
+    this.spawnInterval = Math.max(0.28, (rules ? rules.spawnInterval : 0.8) - this.wave * 0.7 * (rules ? rules.spawnIntervalDecay : 0.03));
+
+    // Challenge phases — escalating density, scrap gates, mid-wave bosses
+    this._noScrap = false;
+    if (rules && rules.challengePhases) {
+      const phase = rules.challengePhases.find(p => this.wave >= p.minWave && this.wave <= p.maxWave);
+      if (phase) {
+        if (phase.enemyMult) this.enemiesThisWave = Math.round(this.enemiesThisWave * phase.enemyMult);
+        this._noScrap = !!phase.noScrap;
+        if (phase.bossEvery && this.wave % phase.bossEvery === 0) {
+          if (!rules.bossWaves) rules.bossWaves = [];
+          if (!rules.bossWaves.includes(this.wave)) rules.bossWaves.push(this.wave);
+        }
+      }
+    }
 
     // Mode caps: Endless & Challenge don't spawn bosses (no bossWaves list either)
     if (rules && rules.bossWave === null && !(rules.bossWaves && rules.bossWaves.length > 0)) {
