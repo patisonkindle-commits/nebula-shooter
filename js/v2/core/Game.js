@@ -442,7 +442,7 @@ class Game {
     }
     let type = types[Math.floor(Math.random() * types.length)];
     // Challenge phase 3 (waves 11-15): shielder-heavy
-    const phase = rules && rules.challengePhases && rules.challengePhases.find(p => this.wave >= p.minWave && this.wave <= p.maxWave);
+    const phase = rules && rules.challengePhases && rules.challengePhases.find(p => this.wave >= p.wave && this.wave < p.endWave);
     if (phase && phase.shielders && Math.random() < 0.3) type = 'shielder';
     this.enemies.spawn(type, null, null, this.wave);
   }
@@ -795,7 +795,7 @@ class Game {
     // Challenge phases — escalating density, scrap gates, mid-wave bosses
     this._noScrap = false;
     if (rules && rules.challengePhases) {
-      const phase = rules.challengePhases.find(p => this.wave >= p.minWave && this.wave <= p.maxWave);
+      const phase = rules.challengePhases.find(p => this.wave >= p.wave && this.wave < p.endWave);
       if (phase) {
         if (phase.enemyMult) this.enemiesThisWave = Math.round(this.enemiesThisWave * phase.enemyMult);
         this._noScrap = !!phase.noScrap;

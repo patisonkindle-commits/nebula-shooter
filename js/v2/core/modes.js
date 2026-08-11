@@ -84,10 +84,10 @@ export const MODES = {
       unlockAt: 'boss20Killed', // flag set when boss 20 dies (in classic, triggers unlock here)
       // Escalating phases (Challenge-specific)
       challengePhases: [
-        { minWave: 1, maxWave: 5, enemyMult: 1, noScrap: false },
-        { minWave: 6, maxWave: 10, enemyMult: 1.5, noScrap: true },
-        { minWave: 11, maxWave: 15, enemyMult: 2, shielders: true },
-        { minWave: 16, maxWave: 20, enemyMult: 2.5, bossEvery: 2 },
+        { wave: 1, endWave: 6, enemyMult: 1, noScrap: false },
+        { wave: 6, endWave: 11, enemyMult: 1.5, noScrap: true },
+        { wave: 11, endWave: 16, enemyMult: 2, shielders: true },
+        { wave: 16, endWave: 21, enemyMult: 2.5, bossEvery: 2 },
       ],
     },
     unlockThreshold: { mode: 'classic', flag: 'boss20Killed' },

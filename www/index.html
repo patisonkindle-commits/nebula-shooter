@@ -7,10 +7,6 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>Nebula — Space Shooter</title>
 <link rel="stylesheet" href="style.css">
-<!-- ═══════════════════════════════════════ -->
-<!-- Android (Capacitor) — No AdSense here   -->
-<!-- AdMob will be added via native plugin   -->
-<!-- ═══════════════════════════════════════ -->
 </head>
 <body>
 <div id="page-wrap">
@@ -27,31 +23,9 @@
 
 <div id="errlog" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#800;color:#fff;font:10px monospace;z-index:9999;padding:4px;white-space:pre-wrap;max-height:80px;overflow:auto;"></div>
 
-<script>
-  // Capacitor.js loaded by native WebView; stub for dev
-  // ⚠️ NOTE: detection moved to main.js & AdsManager.js for reliability
-  // (inline script too early — Capacitor bridge may not be ready yet)
-  window.Capacitor = window.Capacitor || { isNative: false, getPlatform: function(){ return 'web'; }, Plugins: {} };
-  </script>
-  <script src="js/AdsManager.js"></script>
-  <script src="js/config.js"></script>
-<script src="js/Pool.js"></script>
-<script src="js/SpatialGrid.js"></script>
-<script src="js/systems/StarField.js"></script>
-<script src="js/Input.js"></script>
-<script src="js/systems/Audio.js"></script>
-<script src="js/systems/MetaProgression.js"></script>
-<script src="js/entities/Player.js"></script>
-<script src="js/entities/Scrap.js"></script>
-<script src="js/entities/Bullet.js"></script>
-<script src="js/entities/Enemy.js"></script>
-<script src="js/entities/Particles.js"></script>
-<script src="js/ui/HUD.js"></script>
-<script src="js/ui/Menu.js"></script>
-<script src="js/ui/UpgradeUI.js"></script>
-<script src="js/ui/ScorePopup.js"></script>
-<script src="js/ui/MetaScreen.js"></script>
-<script src="js/Game.js"></script>
-<script src="js/main.js"></script>
+<!-- ═══════════════════════════════════════ -->
+<!-- v2: all scripts are ESM modules -->
+<!-- ═══════════════════════════════════════ -->
+<script type="module" src="js/v2/main.js?v=20240809"></script>
 </body>
 </html>
