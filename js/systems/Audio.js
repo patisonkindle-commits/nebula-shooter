@@ -168,8 +168,16 @@ class BGM {
 
     this._running = true;
     this._lastVol = cfg.vol;
+    this._scheduleTick();
+  }
+
+  _scheduleTick() {
+    if (!this._running || !this._seq) return;
     const ms = 60000 / this._bpm / 4; // 16th-note tick
-    this._timer = setInterval(() => this._tick(), ms);
+    this._timer = setTimeout(() => {
+      this._tick();
+      this._scheduleTick();
+    }, ms);
   }
 
   _tick() {

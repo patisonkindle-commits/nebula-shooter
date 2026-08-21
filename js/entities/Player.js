@@ -121,8 +121,8 @@ class Player {
     // Invincibility
     if (this.invincibleTimer > 0) this.invincibleTimer -= dt;
 
-    // Engine pulse
-    this.enginePulse = 0.6 + 0.4 * Math.sin(this.enginePulse * 10 + performance.now() * 0.008);
+    // Engine pulse — frame-rate independent
+    this.enginePulse += dt;
     this.trail.unshift({ x: this.x, y: this.y + this.radius * 0.5 });
     if (this.trail.length > 12) this.trail.pop();
 
