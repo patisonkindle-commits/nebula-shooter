@@ -135,9 +135,10 @@ class Game {
         this._fpsTime = 0;
       }
 
-      // Frame-skip prevention: cap at 120fps effective, skip if > 16ms late
+      // Frame-skip prevention: cap at 120fps effective
       if (rawDt > 0.05) {
-        requestAnimationFrame(this._loop);
+        // Still render the latest frame — don't freeze visually
+        this.lastFrame = timestamp - 16; // pretend 16ms passed
         return;
       }
 

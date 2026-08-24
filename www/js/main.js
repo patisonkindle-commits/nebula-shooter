@@ -40,7 +40,7 @@
     probe.style.cssText =
       'position:fixed;top:0;left:0;width:1px;height:1px;padding-top:env(safe-area-inset-top,0px);pointer-events:none;opacity:0;z-index:-1';
     document.body.appendChild(probe);
-    const envTop = probe.offsetTop;
+    const envTop = parseInt(getComputedStyle(probe).paddingTop, 10) || 0;
     document.body.removeChild(probe);
     if (envTop > 0) return envTop;
 
@@ -54,13 +54,10 @@
       return window.visualViewport.offsetTop;
     }
 
-    // 4) Reasonable default for Android (density-independent pixels)
-    //    24dp for status bar ≈ 24 * dpr pixels
+    // 4) Reasonable default for Android — 24dp × dpr
     if (isAndroid) {
       const dpr = window.devicePixelRatio || 1;
-      // Modern Android: status bar is ~24dp, but with notch can be 36-48dp
-      const estimatedDp = dpr >= 3 ? 36 : 28;
-      return Math.round(estimatedDp);
+      return Math.round(24 * dpr);
     }
 
     return 0;
