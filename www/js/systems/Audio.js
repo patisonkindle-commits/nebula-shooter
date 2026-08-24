@@ -208,7 +208,7 @@ class BGM {
   stop() {
     this._running = false;
     this.state = null;
-    if (this._timer) { clearInterval(this._timer); this._timer = null; }
+    if (this._timer) { clearTimeout(this._timer); this._timer = null; }
     if (this.master) {
       const t = this.ctx.currentTime;
       this.master.gain.setValueAtTime(this.master.gain.value, t);
