@@ -6,6 +6,8 @@ class AdsManager {
     this.bannerShowing = false;
     this.interstitialLoaded = false;
     this.rewardedLoaded = false;
+    this._rewardedClosed = false;
+    this._retryTimers = {};
 
     // ── Ad Unit IDs (PRODUCTION) ──
     this.ADS = {
@@ -43,7 +45,7 @@ class AdsManager {
         this.admob.addListener('interstitialAdFailedToLoad', (err) => {
           this.interstitialLoaded = false;
           console.log('[Ads] Interstitial load fail:', JSON.stringify(err));
-          setTimeout(() => this.prepareInterstitial(), 5000);
+          this._scheduleRetry('interstitial', () => this.prepareInterstitial());
         });
 
         // ── Event listeners for rewarded ──
@@ -54,7 +56,15 @@ class AdsManager {
         this.admob.addListener('onRewardedVideoAdFailedToLoad', (err) => {
           this.rewardedLoaded = false;
           console.log('[Ads] Rewarded load fail:', JSON.stringify(err));
-          setTimeout(() => this.prepareRewarded(), 5000);
+          this._scheduleRetry('rewarded', () => this.prepareRewarded());
+        });
+
+        // ── Rewarded dismissed without reward → unblock pending showRewarded ──
+        this.admob.addListener('onRewardedVideoAdDismissed', () => {
+          console.log('[Ads] Rewarded dismissed');
+          this._rewardedClosed = true;
+          this.rewardedLoaded = false;
+          this._scheduleRetry('rewarded', () => this.prepareRewarded());
         });
         return true;
       } catch (e) {
@@ -66,6 +76,15 @@ class AdsManager {
     }
     console.log('[Ads] Init failed after', retries, 'attempts');
     return false;
+  }
+
+  // ── Single-flight retry: one timer per ad type, dedupes event+catch paths ──
+  _scheduleRetry(kind, fn) {
+    if (this._retryTimers[kind]) return;
+    this._retryTimers[kind] = setTimeout(() => {
+      this._retryTimers[kind] = null;
+      if (this.initialized) fn();
+    }, 5000);
   }
 
   // ══════════════ BANNER ══════════════
@@ -110,13 +129,13 @@ class AdsManager {
       setTimeout(() => {
         if (!this.interstitialLoaded) {
           console.log('[Ads] No interstitial event after 5s — retrying prepare');
-          this.prepareInterstitial();
+          this._scheduleRetry('interstitial', () => this.prepareInterstitial());
         }
       }, 5000);
     } catch (e) {
       console.log('[Ads] Interstitial prepare error:', e.message);
       // Retry after 5s
-      setTimeout(() => this.prepareInterstitial(), 5000);
+      this._scheduleRetry('interstitial', () => this.prepareInterstitial());
     }
   }
 
@@ -153,7 +172,7 @@ class AdsManager {
       console.log('[Ads] Rewarded request sent');
     } catch (e) {
       console.log('[Ads] Rewarded prepare error:', e.message);
-      setTimeout(() => this.prepareRewarded(), 5000);
+      this._scheduleRetry('rewarded', () => this.prepareRewarded());
     }
   }
 
@@ -175,8 +194,23 @@ class AdsManager {
         return false;
       }
     }
+    this._rewardedClosed = false;
     try {
-      const result = await this.admob.showRewardVideoAd();
+      // Native resolve() only fires when user EARNS the reward — racing with
+      // onRewardedVideoAdDismissed so closing early doesn't hang the caller.
+      const result = await Promise.race([
+        this.admob.showRewardVideoAd(),
+        new Promise(resolve => {
+          const iv = setInterval(() => {
+            if (this._rewardedClosed) { clearInterval(iv); resolve(null); }
+          }, 250);
+        }),
+      ]);
+      if (!result) {
+        console.log('[Ads] Rewarded closed without earning — no reward');
+        this.rewardedLoaded = false;
+        return false;
+      }
       console.log('[Ads] Reward! type:', result.type, 'amount:', result.amount);
       this.rewardedLoaded = false;
       if (callback) callback();
