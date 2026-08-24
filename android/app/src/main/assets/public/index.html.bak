@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="viewport-fit=cover,width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Nebula — Space Shooter</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="page-wrap">
+  <div id="game-area">
+    <div id="container">
+      <canvas id="game"></canvas>
+    </div>
+  </div>
+
+  <div id="footer">
+    <span class="footer-heart">Made with ♥</span>
+  </div>
+</div>
+
+<div id="errlog" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#800;color:#fff;font:10px monospace;z-index:9999;padding:4px;white-space:pre-wrap;max-height:80px;overflow:auto;"></div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- v2: all scripts are ESM modules -->
+<!-- ═══════════════════════════════════════ -->
+<script type="module" src="js/v2/main.js?v=20240809"></script>
+</body>
+</html>
