@@ -5,8 +5,8 @@
 |-------|-------|
 | **App Name** | Nebula — Space Shooter |
 | **Package Name** | `com.patison.nebula` |
-| **Version Code** | `4` |
-| **Version Name** | `1.14` |
+| **Version Code** | `13` |
+| **Version Name** | `1.21` |
 | **Min SDK** | API 23 (Android 6.0) |
 | **Target SDK** | API 35 (Android 15) |
 
@@ -44,8 +44,8 @@
 | Ad Type | Unit ID |
 |---------|---------|
 | **Banner** | `ca-app-pub-5374637740061879/8912551848` |
-| **Interstitial** | `ca-app-pub-5374637740061879/8348645309` |
-| **Rewarded** | `ca-app-pub-5374637740061879/4950163450` |
+| **Interstitial** | `ca-app-pub-5374637740061879/8348646309` |
+| **Rewarded** | `ca-app-pub-5374637740061879/4590163450` |
 - **State:** Production mode (`isTesting: false`)
 - **Test ads commented out** in `js/AdsManager.js`
 
