@@ -35,7 +35,7 @@ java -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain 
 - JS edits: edit `js/` → copy to `www/js/` → `npx cap sync android` → verify md5 APK == source
 
 ## Key paths
-- Repo: `/home/patison/nebula-shooter` (git, latest `e11a73a`)
+- Repo: `/home/patison/nebula-shooter` (git, latest `300d6c7`)
 - AdMob manager: `js/AdsManager.js` (231 lines, mirrored in www/ + android assets)
 - Previous releases: `~/Desktop/Nebula-Shooter-Release-v1.12/`
 - Play Console details: `PLAY_CONSOLE_DETAILS.md`; privacy policy live at patisonkindle-commits.github.io/nebula-shooter/privacy.html

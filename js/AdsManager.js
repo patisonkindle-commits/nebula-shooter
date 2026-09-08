@@ -12,8 +12,8 @@ class AdsManager {
     // ── Ad Unit IDs (PRODUCTION) ──
     this.ADS = {
       banner: 'ca-app-pub-5374637740061879/8912551848',
-      interstitial: 'ca-app-pub-5374637740061879/8348645309',
-      rewarded: 'ca-app-pub-5374637740061879/4950163450',
+      interstitial: 'ca-app-pub-5374637740061879/8348646309',
+      rewarded: 'ca-app-pub-5374637740061879/4590163450',
     };
     this.isTesting = false;
 

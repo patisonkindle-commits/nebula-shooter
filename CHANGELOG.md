@@ -2,6 +2,14 @@
 
 Play Console release notes (EN, ≤500 chars each).
 
+## v1.21 (versionCode 13) — 2026-09-02
+
+```
+Ads config update:
+• Interstitial + rewarded production ad unit IDs refreshed to live AdMob units
+• Banner unit ID unchanged (unchanged behavior)
+```
+
 ## v1.20 (versionCode 12) — 2026-08-26
 
 ```
